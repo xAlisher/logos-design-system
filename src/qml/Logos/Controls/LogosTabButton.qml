@@ -30,7 +30,7 @@ TabButton {
     topPadding: 4
     bottomPadding: 4
 
-    font.pixelSize: Theme.typography.primaryText
+    font.pixelSize: Theme.typography.secondaryText
     font.weight: Theme.typography.weightMedium
 
     icon.width: 20

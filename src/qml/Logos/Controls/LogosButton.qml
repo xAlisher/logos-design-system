@@ -54,7 +54,8 @@ import Logos.Controls
 LogosAbstractButton {
     id: root
 
-    enum Variant { Primary, Secondary }
+    enum Variant { Primary, Secondary, Danger }
+    property bool compact: false      // smaller footprint for dense toolbars/headers
 
     component IconSpec: QtObject {
         property url source: ""
@@ -92,6 +93,13 @@ LogosAbstractButton {
                     return Theme.palette.primaryHover
                 return Theme.palette.primary
             }
+            if (variant === LogosButton.Variant.Danger) {
+                if (pressed)
+                    return Theme.palette.errorPressed
+                if (hovered || focused)
+                    return Theme.palette.errorHover
+                return Theme.palette.error
+            }
             if (pressed)
                 return Theme.palette.background
             if (hovered || focused)
@@ -103,12 +111,12 @@ LogosAbstractButton {
     // Floors keep short labels ("OK") on a balanced pill, and hold the height
     // steady whether or not the button carries a default-sized (20px) icon;
     // beyond them the content decides.
-    implicitWidth: Math.max(100, implicitContentWidth + leftPadding + rightPadding)
-    implicitHeight: Math.max(44, implicitContentHeight + topPadding + bottomPadding)
-    leftPadding: Theme.spacing.large
-    rightPadding: Theme.spacing.large
-    topPadding: Theme.spacing.medium
-    bottomPadding: Theme.spacing.medium
+    implicitWidth: Math.max(compact ? 72 : 100, implicitContentWidth + leftPadding + rightPadding)
+    implicitHeight: Math.max(compact ? 32 : 44, implicitContentHeight + topPadding + bottomPadding)
+    leftPadding: compact ? Theme.spacing.medium : Theme.spacing.large
+    rightPadding: compact ? Theme.spacing.medium : Theme.spacing.large
+    topPadding: compact ? Theme.spacing.small : Theme.spacing.medium
+    bottomPadding: compact ? Theme.spacing.small : Theme.spacing.medium
     font.family: Theme.typography.publicSans
     font.pixelSize: Theme.typography.secondaryText
     font.weight: Theme.typography.weightMedium
@@ -126,6 +134,8 @@ LogosAbstractButton {
                 return Theme.palette.border
             if (root.variant === LogosButton.Variant.Primary)
                 return root.isActive ? Theme.palette.overlayOrange : Theme.palette.primary
+            if (root.variant === LogosButton.Variant.Danger)
+                return Theme.palette.error
             return root.isActive ? Theme.palette.overlayOrange : Theme.palette.border
         }
     }
