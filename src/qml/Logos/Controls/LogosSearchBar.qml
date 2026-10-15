@@ -175,7 +175,8 @@ Control {
             id: shortcutChip
 
             Layout.alignment: Qt.AlignVCenter
-            visible: root.shortcutHint.length > 0
+            // Only a hint for getting here: hidden once the field has focus.
+            visible: root.shortcutHint.length > 0 && !field.textInput.activeFocus
             implicitWidth: shortcutLabel.implicitWidth + Theme.spacing.medium
             implicitHeight: 20
 
