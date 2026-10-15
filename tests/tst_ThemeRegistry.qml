@@ -425,4 +425,23 @@ TestCase {
         Theme.setTheme("dark")
         compare(Theme.iconOr("search", "qrc:/fallback.svg"), "qrc:/fallback.svg")
     }
+
+    // ----- backgrounds (v2) -----
+
+    function test_backgrounds_parse_and_validate() {
+        var r = ThemeRegistry.parse(minimalDoc({ backgrounds: {
+            workspace: { image: "assets/bg/night.jpg", fit: "contain", opacity: 3,
+                         tint: "#000000", tintStrength: 0.2 },
+            sidebar: { image: "assets/bg/x.jpg" },
+            onboarding: { image: "../../etc/x.jpg" }
+        } }))
+        verify(r.ok)
+        compare(Object.keys(r.theme.backgrounds).length, 1, "only the valid workspace slot")
+        var w = r.theme.backgrounds.workspace
+        compare(w.image, "assets/bg/night.jpg")
+        compare(w.fit, "contain")
+        compare(w.opacity, 1, "opacity clamped")
+        compare(w.tintStrength, 0.2)
+        verify(r.warnings.join(" ").indexOf("backgrounds.sidebar") >= 0, r.warnings.join("; "))
+    }
 }

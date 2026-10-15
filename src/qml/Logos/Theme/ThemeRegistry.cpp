@@ -3,6 +3,9 @@
 #include "ThemeInstall.h"
 
 #include <QColor>
+#include <QUrl>
+#include <QBuffer>
+#include <QImage>
 #include <QHash>
 #include <QXmlStreamWriter>
 #include <QXmlStreamReader>
@@ -26,7 +29,7 @@ namespace {
 constexpr qint64 kMaxDocumentBytes = 64 * 1024;
 // An uploaded bundle may embed its assets (icon SVGs) in the same file; the
 // installer splits them out, so theme.json on disk stays under 64 KiB.
-constexpr qint64 kMaxBundleBytes = 512 * 1024;
+constexpr qint64 kMaxBundleBytes = 16 * 1024 * 1024;   // room for background images
 constexpr int kMaxBundleAssets = 256;
 constexpr int kMaxLabelLength = 40;
 constexpr int kMaxIdLength = 64;
@@ -295,6 +298,68 @@ void ThemeRegistry::rescan()
                                               + QString::fromLatin1(clean.toBase64()));
             }
             theme.insert("iconUrls", iconUrls);
+
+            // Backgrounds: the image must sit inside this theme's folder. Its
+            // average colour (after the tint) is checked against the text
+            // colour; if text would be hard to read, the tint is raised until
+            // it isn't, so a theme can't ship an unreadable workspace.
+            QVariantMap backgroundSpecs;
+            const QVariantMap bgs = theme.value("backgrounds").toMap();
+            const QVariantMap pal = theme.value("palette").toMap();
+            const QColor textColor = pal.contains("text") ? pal.value("text").value<QColor>()
+                : (theme.value("mode").toString() == QLatin1String("light") ? QColor("#000000") : QColor("#FFFFFF"));
+            const QColor fallbackTint = pal.contains("background") ? pal.value("background").value<QColor>()
+                : (theme.value("mode").toString() == QLatin1String("light") ? QColor("#FFFFFF") : QColor("#000000"));
+            for (auto it = bgs.begin(); it != bgs.end(); ++it) {
+                QVariantMap spec = it.value().toMap();
+                const QFileInfo fi(sub.absoluteFilePath() + QLatin1Char('/') + spec.value("image").toString());
+                const QString canonical = fi.canonicalFilePath();
+                if (!fi.isFile() || fi.isSymLink() || canonical.isEmpty()
+                    || !canonical.startsWith(base + QLatin1Char('/')) || fi.size() > 4 * 1024 * 1024) {
+                    qWarning("ThemeRegistry: %s: background '%s' missing, outside the theme or over 4 MiB",
+                             qPrintable(id), qPrintable(it.key()));
+                    continue;
+                }
+                const QImage img(canonical);
+                if (img.isNull()) {
+                    qWarning("ThemeRegistry: %s: background '%s' is not a readable image",
+                             qPrintable(id), qPrintable(it.key()));
+                    continue;
+                }
+                const QImage tiny = img.scaled(16, 16, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)
+                                       .convertToFormat(QImage::Format_RGB32);
+                double r = 0, g = 0, bl = 0;
+                for (int y = 0; y < 16; ++y)
+                    for (int x = 0; x < 16; ++x) {
+                        const QColor c = tiny.pixelColor(x, y);
+                        r += c.redF(); g += c.greenF(); bl += c.blueF();
+                    }
+                const double opacity = spec.value("opacity").toDouble();
+                const QColor tint = spec.value("tint").isValid() ? spec.value("tint").value<QColor>() : fallbackTint;
+                auto mixed = [&](double k) {
+                    // image over the background colour (opacity), then the tint on top (k)
+                    auto ch = [&](double imgc, double bgc, double tc) {
+                        const double under = imgc * opacity + bgc * (1 - opacity);
+                        return under * (1 - k) + tc * k;
+                    };
+                    return QColor::fromRgbF(ch(r / 256, fallbackTint.redF(), tint.redF()),
+                                            ch(g / 256, fallbackTint.greenF(), tint.greenF()),
+                                            ch(bl / 256, fallbackTint.blueF(), tint.blueF()));
+                };
+                double k = spec.value("tintStrength").toDouble();
+                const double asked = k;
+                while (k < 0.95 && contrast(textColor, mixed(k)) < 4.5)
+                    k = qMin(0.95, k + 0.05);
+                if (k > asked + 1e-9)
+                    qWarning("ThemeRegistry: %s: background '%s' tint raised to %.2f for readable text",
+                             qPrintable(id), qPrintable(it.key()), k);
+                spec.insert("tint", tint);
+                spec.insert("tintStrength", k);
+                spec.insert("url", QUrl::fromLocalFile(canonical).toString());
+                spec.remove("image");
+                backgroundSpecs.insert(it.key(), spec);
+            }
+            theme.insert("backgroundSpecs", backgroundSpecs);
             found << theme;
         }
     }
@@ -360,7 +425,7 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
 
     static const QSet<QString> topLevel = {
         "$schema", "formatVersion", "id", "name", "author", "mode",
-        "palette", "spacing", "radius", "typography", "gradients", "icons", "assets",
+        "palette", "spacing", "radius", "typography", "gradients", "icons", "backgrounds", "assets",
     };
     for (const QString& key : doc.keys())
         if (!topLevel.contains(key))
@@ -546,6 +611,43 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
         icons = { { "style", QStringLiteral("tinted") }, { "set", set } };
     }
 
+    // Backgrounds: raster images (from the theme folder) in named slots.
+    QVariantMap backgrounds;
+    const QJsonValue bv = doc.value("backgrounds");
+    if (!bv.isUndefined() && !bv.isObject())
+        warnings << QStringLiteral("'backgrounds' is not an object; ignored");
+    static const QStringList backgroundSlots = { "workspace", "onboarding" };
+    static const QStringList fits = { "cover", "contain", "tile", "center" };
+    static const QRegularExpression imageRe(QStringLiteral("^assets/[a-z0-9_./-]{1,120}\\.(png|jpg|jpeg)$"));
+    const QJsonObject bobj = bv.toObject();
+    for (auto it = bobj.begin(); it != bobj.end(); ++it) {
+        const QString at = QStringLiteral("backgrounds.%1").arg(it.key());
+        if (!backgroundSlots.contains(it.key())) {
+            warnings << QStringLiteral("unknown slot '%1' ignored").arg(at);
+            continue;
+        }
+        const QJsonObject b = it.value().toObject();
+        const QString image = b.value("image").toString();
+        if (!imageRe.match(image).hasMatch() || image.contains(QLatin1String(".."))) {
+            warnings << QStringLiteral("'%1.image' must be an assets/….png/.jpg path; slot ignored").arg(at);
+            continue;
+        }
+        QString fit = b.value("fit").toString(QStringLiteral("cover"));
+        if (!fits.contains(fit)) {
+            warnings << QStringLiteral("'%1.fit' unknown; using cover").arg(at);
+            fit = QStringLiteral("cover");
+        }
+        QColor tint;
+        if (b.contains("tint") && !parseColor(b.value("tint").toString(), &tint))
+            warnings << QStringLiteral("'%1.tint' is not a colour; ignored").arg(at);
+        backgrounds.insert(it.key(), QVariantMap{
+            { "image", image }, { "fit", fit },
+            { "opacity", qBound(0.0, b.value("opacity").toDouble(1.0), 1.0) },
+            { "tint", tint.isValid() ? QVariant(tint) : QVariant() },
+            { "tintStrength", qBound(0.0, b.value("tintStrength").toDouble(0.0), 1.0) },
+        });
+    }
+
     // Text that sits on a gradient slot must stay readable on every stop.
     const std::pair<const char*, const char*> onSlot[] = {
         { "workspace", "text" }, { "sidebar", "text" },
@@ -591,7 +693,7 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
         { "id", id }, { "name", name }, { "author", author }, { "mode", mode },
         { "formatVersion", version }, { "palette", palette }, { "spacing", spacing },
         { "radius", radius }, { "typography", typography }, { "gradients", gradients },
-        { "icons", icons }, { "contrast", ratios }, { "lowContrast", low },
+        { "icons", icons }, { "backgrounds", backgrounds }, { "contrast", ratios }, { "lowContrast", low },
     };
     return result(true);
 }
@@ -665,7 +767,7 @@ QVariantMap Logos::installThemeFile(const QString& path)
     if (!src.isFile())
         return fail(QStringLiteral("not a file: %1").arg(path));
     if (src.size() > kMaxBundleBytes)
-        return fail(QStringLiteral("larger than 512 KiB"));
+        return fail(QStringLiteral("larger than 16 MiB"));
     QFile in(src.absoluteFilePath());
     if (!in.open(QIODevice::ReadOnly))
         return fail(QStringLiteral("can't read %1").arg(path));
@@ -697,14 +799,40 @@ QVariantMap Logos::installThemeFile(const QString& path)
     const QString id = theme.value("id").toString();   // validated: [a-z0-9_.-] only
 
     // Validate and sanitise every asset before anything is written.
-    static const QRegularExpression pathRe(QStringLiteral("^assets/[a-z0-9_./-]{1,120}\\.svg$"));
+    static const QRegularExpression pathRe(QStringLiteral("^assets/[a-z0-9_./-]{1,120}\\.(svg|png|jpg|jpeg)$"));
     QHash<QString, QByteArray> files;
     if (assets.size() > kMaxBundleAssets)
         return fail(QStringLiteral("more than %1 assets").arg(kMaxBundleAssets));
     for (auto it = assets.begin(); it != assets.end(); ++it) {
         if (!pathRe.match(it.key()).hasMatch() || it.key().contains(QLatin1String(".."))
             || !it.value().isString()) {
-            warnings << QStringLiteral("asset '%1' ignored (must be an assets/….svg path with SVG text)").arg(it.key());
+            warnings << QStringLiteral("asset '%1' ignored (must be an assets/….svg/.png/.jpg path)").arg(it.key());
+            continue;
+        }
+        if (!it.key().endsWith(QLatin1String(".svg"))) {
+            // Raster: "data:image/png|jpeg;base64,…", checked by content, size
+            // capped, and re-encoded so metadata and trailing bytes are dropped.
+            const QString v = it.value().toString();
+            const int comma = v.indexOf(QLatin1Char(','));
+            const QString head = v.left(comma);
+            if (comma < 0 || !(head == QLatin1String("data:image/png;base64")
+                               || head == QLatin1String("data:image/jpeg;base64"))) {
+                warnings << QStringLiteral("asset '%1' ignored (expected a base64 PNG or JPEG data URL)").arg(it.key());
+                continue;
+            }
+            const QByteArray raw = QByteArray::fromBase64(v.mid(comma + 1).toLatin1());
+            QImage img;
+            if (raw.size() > 4 * 1024 * 1024 || !img.loadFromData(raw) || img.isNull()
+                || img.width() > 3840 || img.height() > 3840) {
+                warnings << QStringLiteral("asset '%1' rejected (not a PNG/JPEG up to 4 MiB and 3840 px)").arg(it.key());
+                continue;
+            }
+            QByteArray encoded;
+            QBuffer buf(&encoded);
+            buf.open(QIODevice::WriteOnly);
+            const bool png = it.key().endsWith(QLatin1String(".png"));
+            img.save(&buf, png ? "PNG" : "JPEG", png ? -1 : 90);
+            files.insert(it.key(), encoded);
             continue;
         }
         QString why;

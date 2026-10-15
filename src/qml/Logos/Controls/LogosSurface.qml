@@ -14,8 +14,9 @@ import Logos.Theme
 //         radius: Theme.spacing.radiusXlarge
 //     }
 //
-// Slots: workspace, sidebar, primary, accent, header. `gradient` sets an
-// explicit spec instead.
+// Gradient slots: workspace, sidebar, primary, accent, header. `gradient`
+// sets an explicit spec instead. Background-image slots: workspace,
+// onboarding (drawn over the fill, with the theme's tint).
 Item {
     id: root
 
@@ -62,6 +63,36 @@ Item {
                 height: root.height
                 radius: Math.min(root.radius, root.width / 2, root.height / 2)
             }
+        }
+    }
+
+    // A theme background image for this slot, over the fill, with its tint.
+    readonly property var backgroundSpec:
+        root.slot.length > 0 && Theme.backgrounds[root.slot] ? Theme.backgrounds[root.slot] : null
+
+    Item {
+        anchors.fill: parent
+        visible: root.backgroundSpec !== null
+        clip: true
+
+        Image {
+            anchors.fill: parent
+            source: root.backgroundSpec ? root.backgroundSpec.url : ""
+            asynchronous: true
+            opacity: root.backgroundSpec ? root.backgroundSpec.opacity : 1
+            fillMode: {
+                var fit = root.backgroundSpec ? root.backgroundSpec.fit : "cover"
+                return fit === "contain" ? Image.PreserveAspectFit
+                     : fit === "tile"    ? Image.Tile
+                     : fit === "center"  ? Image.Pad
+                                         : Image.PreserveAspectCrop
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: root.backgroundSpec ? root.backgroundSpec.tint : "transparent"
+            opacity: root.backgroundSpec ? root.backgroundSpec.tintStrength : 0
         }
     }
 

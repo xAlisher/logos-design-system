@@ -61,6 +61,16 @@ QtObject {
         return {}
     }
 
+    // backgrounds of the active installed theme: slot -> { url, fit, opacity,
+    // tint, tintStrength } (tint already raised for readable text).
+    readonly property var backgrounds: {
+        var installed = ThemeRegistry.themes
+        for (var i = 0; i < installed.length; ++i)
+            if (installed[i].id === currentTheme)
+                return installed[i].backgroundSpecs || {}
+        return {}
+    }
+
     // icon pack of the active installed theme: name -> sanitised data: URL.
     readonly property var icons: {
         var installed = ThemeRegistry.themes
