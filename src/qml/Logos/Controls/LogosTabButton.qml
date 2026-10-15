@@ -14,8 +14,8 @@ import Logos.Controls
 TabButton {
     id: root
 
-    property color activeColor: Theme.palette.primary
-    property color inactiveColor: Theme.palette.textTertiary
+    property color activeColor: Theme.components.tab.textSelected
+    property color inactiveColor: Theme.components.tab.text
     property url iconSource: ""
 
     // Exposed for inspection (e.g., from tests). Read-only.

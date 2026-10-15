@@ -88,21 +88,21 @@ LogosAbstractButton {
         id: d
 
         // focused is treated like hovered (pressed still wins).
+        // The variant's colours from the theme (defaults = the palette).
+        readonly property var style: root.variant === LogosButton.Variant.Primary
+                                     ? Theme.components.button.primary
+                                     : Theme.components.button.secondary
+
         function backgroundColor(enabled, variant, pressed, hovered, focused) {
             if (!enabled)
                 return Theme.palette.backgroundMuted
-            if (variant === LogosButton.Variant.Primary) {
-                if (pressed)
-                    return Theme.palette.primaryPressed
-                if (hovered || focused)
-                    return Theme.palette.primaryHover
-                return Theme.palette.primary
-            }
+            const s = variant === LogosButton.Variant.Primary
+                      ? Theme.components.button.primary : Theme.components.button.secondary
             if (pressed)
-                return Theme.palette.background
+                return s.backgroundPressed
             if (hovered || focused)
-                return Theme.palette.backgroundMuted
-            return Theme.palette.backgroundSecondary
+                return s.backgroundHover
+            return s.background
         }
     }
 
@@ -134,18 +134,17 @@ LogosAbstractButton {
         border.color: {
             if (!root.enabled)
                 return Theme.palette.border
-            if (root.variant === LogosButton.Variant.Primary)
-                return root.isActive ? Theme.palette.overlayOrange : Theme.palette.primary
-            return root.isActive ? Theme.palette.overlayOrange : Theme.palette.border
+            return root.isActive ? Theme.palette.overlayOrange : d.style.border
         }
 
-        // A theme's `gradients.primary` replaces the solid primary fill; hover
-        // and pressed become a light / dark wash over it.
+        // A theme gradient (default: `gradients.primary` for the primary
+        // variant) replaces the solid fill; hover and pressed become a light /
+        // dark wash over it.
         LogosSurface {
             id: primaryGradient
             anchors.fill: parent
             anchors.margins: bg.border.width
-            slot: root.variant === LogosButton.Variant.Primary && root.enabled ? "primary" : ""
+            slot: root.enabled ? d.style.gradient : ""
             radius: Math.max(0, root.radius - bg.border.width)
             visible: hasGradient
 
@@ -177,8 +176,7 @@ LogosAbstractButton {
             id: label
             Layout.fillWidth: true
             color: !root.enabled ? Theme.palette.textMuted
-                 : root.variant === LogosButton.Variant.Primary ? Theme.palette.primaryForeground
-                 : Theme.palette.text
+                 : d.style.text
             font: root.font
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter

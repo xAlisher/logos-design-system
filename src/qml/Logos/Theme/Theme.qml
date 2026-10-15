@@ -114,6 +114,21 @@ QtObject {
             return o[group] && o[group][key] !== undefined ? o[group][key] : fallback
         }
         var r = spacing.roundness
+        var p = palette
+        // A colour from the theme (#hex, or a palette token's name), else the default.
+        function col(group, key, fallback, variant) {
+            var g = o[group]
+            if (g && variant) g = g[variant]
+            var v = g ? g[key] : undefined
+            if (v === undefined) return fallback
+            if (typeof v === "string") return p[v] !== undefined ? p[v] : fallback
+            return v
+        }
+        function grad(group, fallback, variant) {
+            var g = o[group]
+            if (g && variant) g = g[variant]
+            return g && g.gradient !== undefined ? g.gradient : fallback
+        }
         return {
             button: {
                 height: _size(pick("button", "height", 44)),
@@ -121,36 +136,103 @@ QtObject {
                 paddingX: _pad(pick("button", "paddingX", spacing.large)),
                 compactPaddingX: _pad(spacing.medium),
                 radius: o.button && o.button.radius !== undefined ? o.button.radius * r : spacing.radiusXlarge,
-                borderWidth: pick("button", "borderWidth", 1)
+                borderWidth: pick("button", "borderWidth", 1),
+                primary: {
+                    background: col("button", "background", p.primary, "primary"),
+                    backgroundHover: col("button", "backgroundHover", p.primaryHover, "primary"),
+                    backgroundPressed: col("button", "backgroundPressed", p.primaryPressed, "primary"),
+                    text: col("button", "text", p.primaryForeground, "primary"),
+                    border: col("button", "border", p.primary, "primary"),
+                    gradient: grad("button", "primary", "primary")
+                },
+                secondary: {
+                    background: col("button", "background", p.backgroundSecondary, "secondary"),
+                    backgroundHover: col("button", "backgroundHover", p.backgroundMuted, "secondary"),
+                    backgroundPressed: col("button", "backgroundPressed", p.background, "secondary"),
+                    text: col("button", "text", p.text, "secondary"),
+                    border: col("button", "border", p.border, "secondary"),
+                    gradient: grad("button", "", "secondary")
+                }
             },
             field: {
                 height: _size(pick("field", "height", 40)),
                 paddingX: _pad(pick("field", "paddingX", 12)),
                 radius: o.field && o.field.radius !== undefined ? o.field.radius * r : spacing.radiusSmall,
-                borderWidth: pick("field", "borderWidth", 1)
+                borderWidth: pick("field", "borderWidth", 1),
+                background: col("field", "background", p.backgroundSecondary),
+                text: col("field", "text", p.text),
+                placeholder: col("field", "placeholder", p.textTertiary),
+                border: col("field", "border", p.backgroundElevated),
+                borderFocus: col("field", "borderFocus", p.overlayOrange),
+                gradient: grad("field", "")
             },
             search: {
                 height: _size(pick("search", "height", 54)),
                 radius: o.search && o.search.radius !== undefined ? o.search.radius * r : spacing.radiusLarge,
-                borderWidth: pick("search", "borderWidth", 1)
+                borderWidth: pick("search", "borderWidth", 1),
+                background: col("search", "background", p.background),
+                text: col("search", "text", p.text),
+                border: col("search", "border", p.borderSubtle),
+                borderFocus: col("search", "borderFocus", p.primary),
+                gradient: grad("search", "")
             },
             combo: {
                 height: _size(pick("combo", "height", 32)),
                 radius: o.combo && o.combo.radius !== undefined ? o.combo.radius * r : spacing.radiusSmall,
-                borderWidth: pick("combo", "borderWidth", 1)
+                borderWidth: pick("combo", "borderWidth", 1),
+                background: col("combo", "background", p.backgroundButton),
+                backgroundPressed: col("combo", "backgroundPressed", p.pressed),
+                text: col("combo", "text", p.text),
+                border: col("combo", "border", p.border),
+                borderFocus: col("combo", "borderFocus", p.overlayOrange)
             },
-            listItem: { height: _size(pick("listItem", "height", 36)), paddingX: _pad(pick("listItem", "paddingX", spacing.medium)) },
-            menuItem: { height: _size(pick("menuItem", "height", 32)), paddingX: _pad(pick("menuItem", "paddingX", spacing.medium)) },
-            tab: { height: _size(pick("tab", "height", 40)), paddingX: _pad(pick("tab", "paddingX", 8)) },
-            toolButton: { size: _size(pick("toolButton", "size", 36)) },
-            iconButton: { size: _size(pick("iconButton", "size", 40)) },
+            listItem: {
+                height: _size(pick("listItem", "height", 36)),
+                paddingX: _pad(pick("listItem", "paddingX", spacing.medium)),
+                backgroundHover: col("listItem", "backgroundHover", p.hover),
+                backgroundPressed: col("listItem", "backgroundPressed", p.pressed),
+                backgroundSelected: col("listItem", "backgroundSelected", colors.getColor(p.primary, 0.18)),
+                text: col("listItem", "text", p.text)
+            },
+            menuItem: {
+                height: _size(pick("menuItem", "height", 32)),
+                paddingX: _pad(pick("menuItem", "paddingX", spacing.medium)),
+                backgroundHover: col("menuItem", "backgroundHover", p.surface),
+                text: col("menuItem", "text", p.text)
+            },
+            tab: {
+                height: _size(pick("tab", "height", 40)),
+                paddingX: _pad(pick("tab", "paddingX", 8)),
+                text: col("tab", "text", p.textTertiary),
+                textSelected: col("tab", "textSelected", p.primary)
+            },
+            toolButton: {
+                size: _size(pick("toolButton", "size", 36)),
+                backgroundHover: col("toolButton", "backgroundHover", p.surface),
+                backgroundPressed: col("toolButton", "backgroundPressed", p.pressed),
+                text: col("toolButton", "text", p.text)
+            },
+            iconButton: {
+                size: _size(pick("iconButton", "size", 40)),
+                background: col("iconButton", "background", p.backgroundButton),
+                backgroundHover: col("iconButton", "backgroundHover", p.backgroundMuted),
+                backgroundPressed: col("iconButton", "backgroundPressed", p.background),
+                text: col("iconButton", "text", p.textTertiary),
+                border: col("iconButton", "border", p.borderStrong),
+                gradient: grad("iconButton", "")
+            },
             card: {
                 radius: o.card && o.card.radius !== undefined ? o.card.radius * r : -1,   // -1: the card's own default
                 borderWidth: pick("card", "borderWidth", 0),
                 shadowColor: pick("card", "shadowColor", "transparent"),
                 shadowBlur: pick("card", "shadowBlur", 0),
                 shadowOffsetY: pick("card", "shadowOffsetY", 0),
-                shadowOpacity: pick("card", "shadowOpacity", 0)
+                shadowOpacity: pick("card", "shadowOpacity", 0),
+                // "transparent": the card keeps its own colour.
+                background: col("card", "background", "transparent"),
+                backgroundHover: col("card", "backgroundHover", "transparent"),
+                border: col("card", "border", "transparent"),
+                gradient: grad("card", "card")
             }
         }
     }

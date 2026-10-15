@@ -31,10 +31,10 @@ import Logos.Controls
 ItemDelegate {
     id: root
 
-    property color hoverColor: Theme.palette.hover
-    property color pressedColor: Theme.palette.pressed
-    property color highlightColor: Theme.colors.getColor(Theme.palette.primary, 0.18)
-    property color textColor: Theme.palette.text
+    property color hoverColor: Theme.components.listItem.backgroundHover
+    property color pressedColor: Theme.components.listItem.backgroundPressed
+    property color highlightColor: Theme.components.listItem.backgroundSelected
+    property color textColor: Theme.components.listItem.text
     property real radius: 0
 
     // Exposed for inspection (e.g., from tests). Read-only.

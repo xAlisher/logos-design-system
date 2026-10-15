@@ -508,4 +508,56 @@ TestCase {
         var bad = ThemeRegistry.parse(minimalDoc({ density: "huge" }))
         compare(bad.theme.density, "")
     }
+
+    // ----- per-control colours -----
+
+    function test_control_colours_default_to_todays_palette() {
+        Theme.setTheme("dark")
+        compare(plainBtn.backgroundItem.color, Theme.palette.backgroundSecondary)
+        compare(primaryBtn.backgroundItem.border.color, Theme.palette.primary)
+        compare(field.backgroundItem.color, Theme.palette.backgroundSecondary)
+        compare(tabBtn.activeColor, Theme.palette.primary)
+        compare(itemDel.highlightColor, Theme.colors.getColor(Theme.palette.primary, 0.18))
+        compare(Theme.components.button.secondary.gradient, "")
+        compare(Theme.components.button.primary.gradient, "primary")
+    }
+
+    function test_control_colours_from_theme() {
+        Theme.setTheme("test.styled")
+        compare(plainBtn.backgroundItem.color.toString(), "#204060")
+        compare(plainBtn.labelItem.color.toString(), "#ffffff")
+        // A palette token's name resolves through the palette.
+        compare(Theme.components.button.secondary.backgroundHover.toString(), "#2a2a2a")
+        compare(Theme.components.field.borderFocus.toString(), "#3366cc")
+        compare(field.backgroundItem.color.toString(), "#101820")
+        compare(tabBtn.activeColor.toString(), "#ff8800")
+        compare(Theme.components.button.secondary.gradient, "accent")
+        // Keys the theme leaves out keep the default.
+        compare(Theme.components.button.primary.background, Theme.palette.primary)
+        Theme.setTheme("dark")
+        compare(plainBtn.backgroundItem.color, Theme.palette.backgroundSecondary)
+    }
+
+    function test_control_colours_rejected() {
+        var r = ThemeRegistry.parse(minimalDoc({
+            components: {
+                button: { primary: { background: "red", text: "#000000", border: "notAToken",
+                                     gradient: "workspace", shimmer: "#FFFFFF" },
+                          secondary: "#FFFFFF" },
+                search: { background: "#FFFFFF", text: "#EEEEEE" },
+                tab: { background: "#FFFFFF" }
+            }
+        }))
+        verify(r.ok)
+        var w = r.warnings.join(" | ")
+        compare(r.theme.components.button.primary.background, undefined)
+        compare(r.theme.components.button.primary.border, undefined)
+        compare(r.theme.components.button.primary.gradient, undefined, "not defined by this theme")
+        compare(r.theme.components.button.primary.text.toString(), "#000000")
+        verify(w.indexOf("components.button.primary.shimmer") >= 0, w)
+        verify(w.indexOf("'components.button.secondary' is not an object") >= 0, w)
+        verify(w.indexOf("'components.search.text' is below 4.5:1") >= 0, w)
+        verify(w.indexOf("components.tab.background") >= 0, w)
+        compare(r.theme.components.tab.background, undefined)
+    }
 }

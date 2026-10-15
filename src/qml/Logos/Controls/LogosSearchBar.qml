@@ -90,12 +90,21 @@ Control {
         field.textInput.forceActiveFocus()
 
     background: Rectangle {
-        color: Theme.palette.background
+        id: searchBg
+        color: Theme.components.search.background
         radius: Theme.components.search.radius
         border.width: Theme.components.search.borderWidth
         border.color: field.textInput.activeFocus
-                      ? Theme.palette.primary
-                      : Theme.palette.borderSubtle
+                      ? Theme.components.search.borderFocus
+                      : Theme.components.search.border
+
+        LogosSurface {
+            anchors.fill: parent
+            anchors.margins: searchBg.border.width
+            radius: Math.max(0, searchBg.radius - searchBg.border.width)
+            slot: Theme.components.search.gradient
+            visible: hasGradient
+        }
     }
 
     contentItem: RowLayout {
@@ -135,6 +144,7 @@ Control {
             placeholderText: "Search..."
             activeFocusOnTab: false
             textInput.activeFocusOnTab: false
+            textInput.color: Theme.components.search.text
         }
 
         // Round ✕ that turns accent on hover, like the sidebar's circle buttons.

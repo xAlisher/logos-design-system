@@ -206,6 +206,57 @@ QVariantMap parseIntGroup(const QJsonObject& doc, const QString& group,
     return out;
 }
 
+// Per-control colours (components.<control>.<key>). A value is #RRGGBB[AA] or
+// the name of a palette token; `gradient` names a gradient slot the theme
+// defines. Accepted keys are taken out of `group`, so the size parser after
+// this never sees them.
+QVariantMap parseStyle(QJsonObject& group, const QStringList& keys, const QString& at,
+                       const QVariantMap& gradients, QStringList& warnings)
+{
+    QVariantMap out;
+    for (const QString& key : keys) {
+        const QJsonValue v = group.take(key);
+        if (v.isUndefined())
+            continue;
+        const QString path = at + QLatin1Char('.') + key;
+        const QString s = v.toString();
+        if (key == QLatin1String("gradient")) {
+            if (gradients.contains(s))
+                out.insert(key, s);
+            else
+                warnings << QStringLiteral("'%1' names no gradient this theme defines; ignored").arg(path);
+            continue;
+        }
+        QColor c;
+        if (parseColor(s, &c))
+            out.insert(key, c);
+        else if (paletteTokenList().contains(s))
+            out.insert(key, s);
+        else
+            warnings << QStringLiteral("'%1' is not a colour or palette token; ignored").arg(path);
+    }
+    return out;
+}
+
+// A style's text on its own background, when both resolve to a colour here.
+void checkStyleContrast(const QVariantMap& style, const QString& at,
+                        const QVariantMap& palette, QStringList& warnings)
+{
+    auto resolve = [&](const QString& key, QColor* out) {
+        const QVariant v = style.value(key);
+        if (v.typeId() == QMetaType::QColor) { *out = v.value<QColor>(); return true; }
+        if (v.typeId() == QMetaType::QString && palette.contains(v.toString())) {
+            *out = palette.value(v.toString()).value<QColor>();
+            return true;
+        }
+        return false;
+    };
+    QColor fg, bg;
+    if (resolve(QStringLiteral("text"), &fg) && resolve(QStringLiteral("background"), &bg)
+        && contrast(fg, bg) < 4.5)
+        warnings << QStringLiteral("'%1.text' is below 4.5:1 on '%1.background'").arg(at);
+}
+
 } // namespace
 
 ThemeRegistry::ThemeRegistry(QObject* parent)
@@ -726,6 +777,44 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
             }
             QJsonObject group = it.value().toObject();
             QVariantMap values;
+            const QString at = QStringLiteral("components.") + it.key();
+            static const QStringList variantKeys = {
+                "background", "backgroundHover", "backgroundPressed", "text", "border", "gradient",
+            };
+            static const QHash<QString, QStringList> colourKeys = {
+                { "field",      { "background", "text", "placeholder", "border", "borderFocus", "gradient" } },
+                { "search",     { "background", "text", "border", "borderFocus", "gradient" } },
+                { "combo",      { "background", "backgroundPressed", "text", "border", "borderFocus" } },
+                { "listItem",   { "backgroundHover", "backgroundPressed", "backgroundSelected", "text" } },
+                { "menuItem",   { "backgroundHover", "text" } },
+                { "tab",        { "text", "textSelected" } },
+                { "toolButton", { "backgroundHover", "backgroundPressed", "text" } },
+                { "iconButton", { "background", "backgroundHover", "backgroundPressed", "text", "border", "gradient" } },
+                { "card",       { "background", "backgroundHover", "border", "gradient" } },
+            };
+            if (it.key() == QLatin1String("button")) {
+                for (const QString variant : { QStringLiteral("primary"), QStringLiteral("secondary") }) {
+                    const QJsonValue vv = group.take(variant);
+                    if (vv.isUndefined())
+                        continue;
+                    if (!vv.isObject()) {
+                        warnings << QStringLiteral("'%1.%2' is not an object; ignored").arg(at, variant);
+                        continue;
+                    }
+                    QJsonObject vobj = vv.toObject();
+                    const QString vat = at + QLatin1Char('.') + variant;
+                    const QVariantMap style = parseStyle(vobj, variantKeys, vat, gradients, warnings);
+                    for (auto k = vobj.begin(); k != vobj.end(); ++k)
+                        warnings << QStringLiteral("unknown token '%1.%2' ignored").arg(vat, k.key());
+                    checkStyleContrast(style, vat, palette, warnings);
+                    values.insert(variant, style);
+                }
+            } else {
+                const QVariantMap style = parseStyle(group, colourKeys.value(it.key()), at, gradients, warnings);
+                checkStyleContrast(style, at, palette, warnings);
+                for (auto k = style.begin(); k != style.end(); ++k)
+                    values.insert(k.key(), k.value());
+            }
             if (it.key() == QLatin1String("card")) {
                 // Colour and opacity are not integers; take them out first.
                 QColor sc;
