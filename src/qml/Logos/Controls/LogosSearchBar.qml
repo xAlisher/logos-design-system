@@ -165,8 +165,9 @@ Control {
                     width: 12
                     height: 12
                     source: LogosIcons.close
-                    color: clearButton.isActive ? Theme.palette.backgroundBlack
+                    color: clearButton.isActive ? Theme.palette.accentForeground
                                                 : Theme.palette.textSecondary
+                    brightness: clearButton.isActive ? 1.0 : 0
                 }
             }
         }
