@@ -3,6 +3,7 @@
 #include "ThemeInstall.h"
 
 #include <QColor>
+#include <QHash>
 #include <QXmlStreamWriter>
 #include <QXmlStreamReader>
 #include <cmath>
@@ -23,6 +24,10 @@
 namespace {
 
 constexpr qint64 kMaxDocumentBytes = 64 * 1024;
+// An uploaded bundle may embed its assets (icon SVGs) in the same file; the
+// installer splits them out, so theme.json on disk stays under 64 KiB.
+constexpr qint64 kMaxBundleBytes = 512 * 1024;
+constexpr int kMaxBundleAssets = 256;
 constexpr int kMaxLabelLength = 40;
 constexpr int kMaxIdLength = 64;
 
@@ -355,7 +360,7 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
 
     static const QSet<QString> topLevel = {
         "$schema", "formatVersion", "id", "name", "author", "mode",
-        "palette", "spacing", "radius", "typography", "gradients", "icons",
+        "palette", "spacing", "radius", "typography", "gradients", "icons", "assets",
     };
     for (const QString& key : doc.keys())
         if (!topLevel.contains(key))
@@ -659,21 +664,58 @@ QVariantMap Logos::installThemeFile(const QString& path)
     const QFileInfo src(path);
     if (!src.isFile())
         return fail(QStringLiteral("not a file: %1").arg(path));
-    if (src.size() > kMaxDocumentBytes)
-        return fail(QStringLiteral("larger than 64 KiB"));
+    if (src.size() > kMaxBundleBytes)
+        return fail(QStringLiteral("larger than 512 KiB"));
     QFile in(src.absoluteFilePath());
     if (!in.open(QIODevice::ReadOnly))
         return fail(QStringLiteral("can't read %1").arg(path));
-    const QByteArray data = in.read(kMaxDocumentBytes + 1);
+    QByteArray data = in.read(kMaxBundleBytes + 1);
+
+    // A bundle carries its assets inline: { "assets": { "assets/icons/x.svg": "<svg…>" } }.
+    // Split them out; what is left must be a normal theme document.
+    QJsonObject assets;
+    {
+        QJsonParseError perr;
+        QJsonDocument whole = QJsonDocument::fromJson(data, &perr);
+        if (whole.isObject() && whole.object().contains(QStringLiteral("assets"))) {
+            QJsonObject obj = whole.object();
+            assets = obj.take(QStringLiteral("assets")).toObject();
+            data = QJsonDocument(obj).toJson(QJsonDocument::Indented);
+        }
+    }
+    if (data.size() > kMaxDocumentBytes)
+        return fail(QStringLiteral("theme document (without assets) larger than 64 KiB"));
 
     const QVariantMap parsed = ThemeRegistry::parseDocument(data);
-    out.insert("warnings", parsed.value("warnings"));
+    QStringList warnings = parsed.value("warnings").toStringList();
     if (!parsed.value("ok").toBool()) {
+        out.insert("warnings", warnings);
         out.insert("errors", parsed.value("errors"));
         return out;
     }
     const QVariantMap theme = parsed.value("theme").toMap();
     const QString id = theme.value("id").toString();   // validated: [a-z0-9_.-] only
+
+    // Validate and sanitise every asset before anything is written.
+    static const QRegularExpression pathRe(QStringLiteral("^assets/[a-z0-9_./-]{1,120}\\.svg$"));
+    QHash<QString, QByteArray> files;
+    if (assets.size() > kMaxBundleAssets)
+        return fail(QStringLiteral("more than %1 assets").arg(kMaxBundleAssets));
+    for (auto it = assets.begin(); it != assets.end(); ++it) {
+        if (!pathRe.match(it.key()).hasMatch() || it.key().contains(QLatin1String(".."))
+            || !it.value().isString()) {
+            warnings << QStringLiteral("asset '%1' ignored (must be an assets/….svg path with SVG text)").arg(it.key());
+            continue;
+        }
+        QString why;
+        const QByteArray clean = ThemeRegistry::sanitizeSvg(it.value().toString().toUtf8(), true, &why);
+        if (clean.isEmpty()) {
+            warnings << QStringLiteral("asset '%1' rejected: %2").arg(it.key(), why);
+            continue;
+        }
+        files.insert(it.key(), clean);
+    }
+    out.insert("warnings", warnings);
 
     const QString root = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     if (root.isEmpty())
@@ -681,11 +723,23 @@ QVariantMap Logos::installThemeFile(const QString& path)
     const QString dir = QDir::cleanPath(root + QStringLiteral("/themes/") + id);
     if (!QDir().mkpath(dir))
         return fail(QStringLiteral("can't create %1").arg(dir));
+    // Replacing a theme replaces its assets too.
+    QDir(dir + QStringLiteral("/assets")).removeRecursively();
+    for (auto it = files.begin(); it != files.end(); ++it) {
+        const QString target = QDir::cleanPath(dir + QLatin1Char('/') + it.key());
+        if (!target.startsWith(dir + QLatin1Char('/')))
+            continue;   // belt and braces; the path pattern already forbids this
+        QDir().mkpath(QFileInfo(target).absolutePath());
+        QFile f(target);
+        if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate) || f.write(it.value()) != it.value().size())
+            return fail(QStringLiteral("can't write %1").arg(target));
+    }
     QFile outFile(dir + QStringLiteral("/theme.json"));
     if (!outFile.open(QIODevice::WriteOnly | QIODevice::Truncate)
         || outFile.write(data) != data.size())
         return fail(QStringLiteral("can't write %1").arg(outFile.fileName()));
 
+    out.insert("assets", files.size());
     out.insert("ok", true);
     out.insert("id", id);
     out.insert("name", theme.value("name"));
