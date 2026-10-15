@@ -14,7 +14,8 @@ import Logos.Theme
 //         radius: Theme.spacing.radiusXlarge
 //     }
 //
-// Slots: workspace, sidebar, primary, accent, header.
+// Slots: workspace, sidebar, primary, accent, header. `gradient` sets an
+// explicit spec instead.
 Item {
     id: root
 
@@ -24,8 +25,14 @@ Item {
     property color borderColor: "transparent"
     property real borderWidth: 0
 
+    // An explicit spec (same shape as a parsed theme gradient) wins over the
+    // theme's slot; leave undefined to follow the theme.
+    property var gradient: undefined
+
     readonly property var gradientSpec:
-        root.slot.length > 0 && Theme.gradients[root.slot] ? Theme.gradients[root.slot] : null
+        root.gradient !== undefined ? root.gradient
+        : root.slot.length > 0 && Theme.gradients[root.slot] ? Theme.gradients[root.slot] : null
+    readonly property int stopCount: d.made.length
     readonly property bool hasGradient: gradientSpec !== null
     readonly property bool isRadial: hasGradient && gradientSpec.type === "radial"
 
@@ -91,14 +98,17 @@ Item {
             for (var j = 0; j < d.made.length; ++j)
                 d.made[j].destroy()
             d.made = []
-            if (!root.hasGradient)
+            // Read the spec itself: this runs from onGradientSpecChanged, before
+            // the bindings derived from it (hasGradient, isRadial) update.
+            var spec = root.gradientSpec
+            if (!spec)
                 return
-            var src = root.gradientSpec.stops
+            var src = spec.stops
             var made = []
             for (var i = 0; i < src.length; ++i)
                 made.push(d.stop.createObject(root, { position: src[i].position, color: src[i].color }))
             d.made = made
-            ;(root.isRadial ? d.radial : d.linear).stops = made
+            ;(spec.type === "radial" ? d.radial : d.linear).stops = made
         }
     }
 

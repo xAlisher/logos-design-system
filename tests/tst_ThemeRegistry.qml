@@ -344,6 +344,25 @@ TestCase {
         verify(r.warnings.join(" ").indexOf("gradients.workspace") >= 0, r.warnings.join("; "))
     }
 
+    function test_surface_builds_stops_when_a_theme_with_gradients_loads() {
+        // Regression: rebuild() ran before hasGradient updated, so a theme
+        // switch left the gradient with no stops (drawn transparent).
+        var spec = { type: "linear", angle: 0, stops: [{ position: 0, color: "#ff0000" },
+                                                       { position: 1, color: "#0000ff" }] }
+        var s = createTemporaryObject(surfaceComponent, surface)
+        compare(s.stopCount, 0)
+        s.gradient = spec
+        compare(s.stopCount, 2)
+        verify(s.hasGradient)
+        s.gradient = null
+        compare(s.stopCount, 0)
+    }
+
+    Component {
+        id: surfaceComponent
+        LogosSurface { width: 50; height: 20; gradient: null }
+    }
+
     function test_surface_is_solid_without_a_gradient() {
         Theme.setTheme("dark")
         compare(Object.keys(Theme.gradients).length, 0)
