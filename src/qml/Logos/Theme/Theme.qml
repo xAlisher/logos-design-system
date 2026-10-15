@@ -51,6 +51,16 @@ QtObject {
         return {}
     }
     
+    // gradients block of the active installed theme: slot -> spec, {} for
+    // built-in dark. Draw them with LogosSurface { slot: "..." }.
+    readonly property var gradients: {
+        var installed = ThemeRegistry.themes
+        for (var i = 0; i < installed.length; ++i)
+            if (installed[i].id === currentTheme)
+                return installed[i].gradients || {}
+        return {}
+    }
+
     // ===== THEME INSTANCES =====
     // Currently available themes - created first
     property var darkTheme: DarkTheme { colors: theme.colors }

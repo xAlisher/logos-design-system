@@ -3,6 +3,8 @@
 #include "ThemeInstall.h"
 
 #include <QColor>
+#include <cmath>
+#include <algorithm>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -321,7 +323,7 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
 
     static const QSet<QString> topLevel = {
         "$schema", "formatVersion", "id", "name", "author", "mode",
-        "palette", "spacing", "radius", "typography",
+        "palette", "spacing", "radius", "typography", "gradients",
     };
     for (const QString& key : doc.keys())
         if (!topLevel.contains(key))
@@ -407,6 +409,88 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
         warnings << QStringLiteral("'typography' is not an object; ignored");
     }
 
+    // Gradients (format v2, also accepted in v1 files): named slots only.
+    // Each becomes { type, angle, center: [x, y], radius, stops: [{position, color}] }.
+    QVariantMap gradients;
+    const QJsonValue gv = doc.value("gradients");
+    if (!gv.isUndefined() && !gv.isObject())
+        warnings << QStringLiteral("'gradients' is not an object; ignored");
+    static const QStringList gradientSlots = {
+        "workspace", "sidebar", "primary", "accent", "header",
+    };
+    const QJsonObject gobj = gv.toObject();
+    for (auto it = gobj.begin(); it != gobj.end(); ++it) {
+        const QString slot = it.key();
+        const QString at = QStringLiteral("gradients.%1").arg(slot);
+        if (!gradientSlots.contains(slot)) {
+            warnings << QStringLiteral("unknown slot '%1' ignored").arg(at);
+            continue;
+        }
+        const QJsonObject g = it.value().toObject();
+        const QString type = g.value("type").toString();
+        if (type != QLatin1String("linear") && type != QLatin1String("radial")) {
+            warnings << QStringLiteral("'%1.type' must be \"linear\" or \"radial\"; slot ignored").arg(at);
+            continue;
+        }
+        QVariantList stops;
+        for (const QJsonValue& sv : g.value("stops").toArray()) {
+            const QJsonArray pair = sv.toArray();
+            QColor c;
+            bool posOk = false;
+            const double pos = pair.size() == 2
+                ? (pair.at(0).isString() ? pair.at(0).toString().toDouble(&posOk)
+                                         : (posOk = pair.at(0).isDouble(), pair.at(0).toDouble()))
+                : 0.0;
+            if (!posOk || !pair.at(1).isString() || !parseColor(pair.at(1).toString(), &c)) {
+                warnings << QStringLiteral("'%1' has an invalid stop; dropped").arg(at);
+                continue;
+            }
+            stops << QVariantMap{ { "position", qBound(0.0, pos, 1.0) }, { "color", c } };
+            if (stops.size() == 8)
+                break;
+        }
+        if (stops.size() < 2) {
+            warnings << QStringLiteral("'%1' needs at least 2 valid stops; slot ignored").arg(at);
+            continue;
+        }
+        std::stable_sort(stops.begin(), stops.end(), [](const QVariant& a, const QVariant& b) {
+            return a.toMap().value("position").toDouble() < b.toMap().value("position").toDouble();
+        });
+        QVariantMap out{ { "type", type }, { "stops", stops } };
+        if (type == QLatin1String("linear")) {
+            const double angle = std::fmod(g.value("angle").toDouble(90.0), 360.0);
+            out.insert("angle", angle < 0 ? angle + 360.0 : angle);
+        } else {
+            const QJsonArray center = g.value("center").toArray();
+            out.insert("center", QVariantList{
+                center.size() == 2 ? qBound(0.0, center.at(0).toDouble(0.5), 1.0) : 0.5,
+                center.size() == 2 ? qBound(0.0, center.at(1).toDouble(0.5), 1.0) : 0.5 });
+            const double radius = g.value("radius").toDouble(1.0);
+            const double clamped = qBound(0.1, radius, 3.0);
+            if (clamped != radius)
+                warnings << QStringLiteral("'%1.radius' clamped to %2").arg(at).arg(clamped);
+            out.insert("radius", clamped);
+        }
+        gradients.insert(slot, out);
+    }
+
+    // Text that sits on a gradient slot must stay readable on every stop.
+    const std::pair<const char*, const char*> onSlot[] = {
+        { "workspace", "text" }, { "sidebar", "text" },
+        { "primary", "primaryForeground" }, { "accent", "accentForeground" },
+    };
+    for (const auto& [slot, fg] : onSlot) {
+        if (!gradients.contains(slot) || !palette.contains(fg))
+            continue;
+        for (const QVariant& sv : gradients.value(slot).toMap().value("stops").toList()) {
+            if (contrast(palette.value(fg).value<QColor>(), sv.toMap().value("color").value<QColor>()) < 3.0) {
+                warnings << QStringLiteral("'%1' is below 3:1 on a stop of 'gradients.%2'")
+                                .arg(QLatin1String(fg), QLatin1String(slot));
+                break;
+            }
+        }
+    }
+
     if (!errors.isEmpty())
         return result(false);
 
@@ -434,7 +518,7 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
     theme = {
         { "id", id }, { "name", name }, { "author", author }, { "mode", mode },
         { "formatVersion", version }, { "palette", palette }, { "spacing", spacing },
-        { "radius", radius }, { "typography", typography },
+        { "radius", radius }, { "typography", typography }, { "gradients", gradients },
         { "contrast", ratios }, { "lowContrast", low },
     };
     return result(true);

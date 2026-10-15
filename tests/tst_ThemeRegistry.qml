@@ -302,4 +302,51 @@ TestCase {
         compare(Theme.tokenOr("textSecondary", "#a0a0a0"), Theme.palette.textSecondary)
         Theme.setTheme("dark")
     }
+
+    // ----- gradients (v2) -----
+
+    LogosSurface { id: surface; width: 100; height: 40; slot: "sidebar"; color: "#123456" }
+
+    function test_gradients_parse_linear_and_radial() {
+        var r = ThemeRegistry.parse(minimalDoc({ gradients: {
+            sidebar: { type: "linear", angle: 450, stops: [["1", "#000000"], [0, "#FF0000"]] },
+            workspace: { type: "radial", center: [0.5, 0], radius: 9,
+                         stops: [[0, "#111111"], [1, "#222222"]] }
+        } }))
+        verify(r.ok, r.errors.join("; "))
+        var g = r.theme.gradients
+        compare(g.sidebar.type, "linear")
+        compare(g.sidebar.angle, 90, "angle taken modulo 360")
+        compare(g.sidebar.stops[0].position, 0, "stops sorted by position")
+        compare(String(g.sidebar.stops[0].color), "#ff0000")
+        compare(g.workspace.type, "radial")
+        compare(g.workspace.radius, 3, "radius clamped to 3")
+        compare(g.workspace.center[1], 0)
+    }
+
+    function test_gradients_reject_bad_slots_quietly() {
+        var r = ThemeRegistry.parse(minimalDoc({ gradients: {
+            nope: { type: "linear", stops: [[0, "#000000"], [1, "#FFFFFF"]] },
+            header: { type: "conic", stops: [[0, "#000000"], [1, "#FFFFFF"]] },
+            accent: { type: "linear", stops: [[0, "#000000"], [1, "red"]] }
+        } }))
+        verify(r.ok, "bad gradients never reject the theme")
+        compare(Object.keys(r.theme.gradients).length, 0)
+        verify(r.warnings.length >= 3, r.warnings.join("; "))
+    }
+
+    function test_gradient_contrast_checked_per_stop() {
+        var r = ThemeRegistry.parse(minimalDoc({
+            palette: { text: "#FFFFFF" },
+            gradients: { workspace: { type: "linear", stops: [[0, "#000000"], [1, "#FAFAFA"]] } }
+        }))
+        verify(r.ok)
+        verify(r.warnings.join(" ").indexOf("gradients.workspace") >= 0, r.warnings.join("; "))
+    }
+
+    function test_surface_is_solid_without_a_gradient() {
+        Theme.setTheme("dark")
+        compare(Object.keys(Theme.gradients).length, 0)
+        verify(!surface.hasGradient, "dark sets no gradients")
+    }
 }

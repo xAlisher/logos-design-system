@@ -137,6 +137,25 @@ LogosAbstractButton {
                 return root.isActive ? Theme.palette.overlayOrange : Theme.palette.primary
             return root.isActive ? Theme.palette.overlayOrange : Theme.palette.border
         }
+
+        // A theme's `gradients.primary` replaces the solid primary fill; hover
+        // and pressed become a light / dark wash over it.
+        LogosSurface {
+            id: primaryGradient
+            anchors.fill: parent
+            anchors.margins: bg.border.width
+            slot: root.variant === LogosButton.Variant.Primary && root.enabled ? "primary" : ""
+            radius: Math.max(0, root.radius - bg.border.width)
+            visible: hasGradient
+
+            Rectangle {
+                anchors.fill: parent
+                radius: parent.radius
+                color: root.pressed ? Qt.rgba(0, 0, 0, 0.18)
+                     : root.hovered || root.activeFocus ? Qt.rgba(1, 1, 1, 0.12)
+                     : "transparent"
+            }
+        }
     }
 
     contentItem: RowLayout {
