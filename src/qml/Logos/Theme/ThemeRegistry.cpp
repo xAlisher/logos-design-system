@@ -112,6 +112,21 @@ const QHash<QString, IntRange>& weightRanges()
 
 // "#RRGGBB" or "#RRGGBBAA" (CSS order). Qt's own string form is #AARRGGBB,
 // so the alpha byte is moved here rather than handed to QColor as-is.
+// Optional "motion": { strength 0..1, period 10..120 s }. Engine-defined
+// movement only; a theme picks how much and how slow, never how.
+QVariant parseMotion(const QJsonObject& owner, const QString& at, QStringList& warnings)
+{
+    if (!owner.contains(QStringLiteral("motion")))
+        return QVariant();
+    const QJsonObject m = owner.value(QStringLiteral("motion")).toObject();
+    const double strength = m.value(QStringLiteral("strength")).toDouble(0.5);
+    const double period = m.value(QStringLiteral("period")).toDouble(30);
+    if (strength < 0 || strength > 1 || period < 10 || period > 120)
+        warnings << QStringLiteral("'%1.motion' clamped (strength 0..1, period 10..120 s)").arg(at);
+    return QVariantMap{ { "strength", qBound(0.0, strength, 1.0) },
+                        { "period", qBound(10.0, period, 120.0) } };
+}
+
 bool parseColor(const QString& s, QColor* out)
 {
     static const QRegularExpression re(QStringLiteral("^#([0-9A-Fa-f]{6})([0-9A-Fa-f]{2})?$"));
@@ -559,6 +574,8 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
             return a.toMap().value("position").toDouble() < b.toMap().value("position").toDouble();
         });
         QVariantMap out{ { "type", type }, { "stops", stops } };
+        if (const QVariant motion = parseMotion(g, at, warnings); motion.isValid())
+            out.insert("motion", motion);
         if (type == QLatin1String("linear")) {
             const double angle = std::fmod(g.value("angle").toDouble(90.0), 360.0);
             out.insert("angle", angle < 0 ? angle + 360.0 : angle);
@@ -640,12 +657,15 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
         QColor tint;
         if (b.contains("tint") && !parseColor(b.value("tint").toString(), &tint))
             warnings << QStringLiteral("'%1.tint' is not a colour; ignored").arg(at);
-        backgrounds.insert(it.key(), QVariantMap{
+        QVariantMap bgSpec{
             { "image", image }, { "fit", fit },
             { "opacity", qBound(0.0, b.value("opacity").toDouble(1.0), 1.0) },
             { "tint", tint.isValid() ? QVariant(tint) : QVariant() },
             { "tintStrength", qBound(0.0, b.value("tintStrength").toDouble(0.0), 1.0) },
-        });
+        };
+        if (const QVariant motion = parseMotion(b, at, warnings); motion.isValid())
+            bgSpec.insert("motion", motion);
+        backgrounds.insert(it.key(), bgSpec);
     }
 
     // Effects: decorative, bounded values only.

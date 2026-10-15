@@ -444,4 +444,17 @@ TestCase {
         compare(w.tintStrength, 0.2)
         verify(r.warnings.join(" ").indexOf("backgrounds.sidebar") >= 0, r.warnings.join("; "))
     }
+
+    function test_motion_is_bounded() {
+        var r = ThemeRegistry.parse(minimalDoc({
+            backgrounds: { workspace: { image: "assets/bg/a.jpg", motion: { strength: 5, period: 1 } } },
+            gradients: { sidebar: { type: "linear", stops: [[0, "#000000"], [1, "#FFFFFF"]],
+                                    motion: { strength: 0.4, period: 40 } } }
+        }))
+        verify(r.ok)
+        compare(r.theme.backgrounds.workspace.motion.strength, 1)
+        compare(r.theme.backgrounds.workspace.motion.period, 10)
+        compare(r.theme.gradients.sidebar.motion.period, 40)
+        verify(r.warnings.join(" ").indexOf("motion") >= 0)
+    }
 }

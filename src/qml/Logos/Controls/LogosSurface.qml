@@ -70,23 +70,64 @@ Item {
     readonly property var backgroundSpec:
         root.slot.length > 0 && Theme.backgrounds[root.slot] ? Theme.backgrounds[root.slot] : null
 
+    // Engine-defined motion (theme `motion`: strength 0..1, period seconds):
+    // one slow phase drives everything, and nothing runs while hidden or when
+    // the theme asks for no motion.
+    readonly property var motionSpec:
+        root.backgroundSpec && root.backgroundSpec.motion ? root.backgroundSpec.motion
+        : root.gradientSpec && root.gradientSpec.motion ? root.gradientSpec.motion : null
+    readonly property real motionStrength: motionSpec ? motionSpec.strength : 0
+    property real phase: 0
+
+    NumberAnimation on phase {
+        from: 0
+        to: 2 * Math.PI
+        duration: (root.motionSpec ? root.motionSpec.period : 30) * 1000
+        loops: Animation.Infinite
+        running: root.motionStrength > 0 && root.visible && root.width > 0
+    }
+
     Item {
+        id: bgLayer
         anchors.fill: parent
         visible: root.backgroundSpec !== null
         clip: true
 
+        readonly property real zoom: 1 + 0.08 * root.motionStrength
+        readonly property real dx: width * 0.025 * root.motionStrength
+        readonly property real dy: height * 0.015 * root.motionStrength
+        readonly property int fillMode: {
+            var fit = root.backgroundSpec ? root.backgroundSpec.fit : "cover"
+            return fit === "contain" ? Image.PreserveAspectFit
+                 : fit === "tile"    ? Image.Tile
+                 : fit === "center"  ? Image.Pad
+                                     : Image.PreserveAspectCrop
+        }
+
+        // Slow drift and zoom.
         Image {
-            anchors.fill: parent
+            width: parent.width * bgLayer.zoom
+            height: parent.height * bgLayer.zoom
+            x: (parent.width - width) / 2 + Math.cos(root.phase) * bgLayer.dx
+            y: (parent.height - height) / 2 + Math.sin(2 * root.phase) * bgLayer.dy
             source: root.backgroundSpec ? root.backgroundSpec.url : ""
             asynchronous: true
             opacity: root.backgroundSpec ? root.backgroundSpec.opacity : 1
-            fillMode: {
-                var fit = root.backgroundSpec ? root.backgroundSpec.fit : "cover"
-                return fit === "contain" ? Image.PreserveAspectFit
-                     : fit === "tile"    ? Image.Tile
-                     : fit === "center"  ? Image.Pad
-                                         : Image.PreserveAspectCrop
-            }
+            fillMode: bgLayer.fillMode
+        }
+
+        // A second, slightly larger copy drifting the other way and breathing
+        // in and out: the light in the image appears to shift.
+        Image {
+            visible: root.motionStrength > 0
+            width: parent.width * (bgLayer.zoom + 0.04)
+            height: parent.height * (bgLayer.zoom + 0.04)
+            x: (parent.width - width) / 2 - Math.cos(root.phase) * bgLayer.dx * 1.6
+            y: (parent.height - height) / 2 - Math.sin(root.phase) * bgLayer.dy
+            source: root.backgroundSpec ? root.backgroundSpec.url : ""
+            asynchronous: true
+            opacity: (0.5 - 0.5 * Math.cos(3 * root.phase)) * 0.35 * root.motionStrength
+            fillMode: bgLayer.fillMode
         }
 
         Rectangle {
@@ -102,7 +143,9 @@ Item {
         // CSS-like angle: 0 = left to right, 90 = top to bottom. The line runs
         // through the centre and is long enough to reach the far corners.
         readonly property real rad: root.hasGradient && !root.isRadial
-                                    ? root.gradientSpec.angle * Math.PI / 180 : 0
+                                    ? (root.gradientSpec.angle
+                                       + Math.sin(root.phase) * 12 * root.motionStrength) * Math.PI / 180
+                                    : 0
         readonly property real halfLength: (Math.abs(root.width * Math.cos(rad))
                                             + Math.abs(root.height * Math.sin(rad))) / 2
 
@@ -114,8 +157,10 @@ Item {
         }
 
         property RadialGradient radial: RadialGradient {
-            centerX: root.isRadial ? root.gradientSpec.center[0] * root.width : 0
-            centerY: root.isRadial ? root.gradientSpec.center[1] * root.height : 0
+            centerX: root.isRadial ? (root.gradientSpec.center[0]
+                                      + Math.cos(root.phase) * 0.05 * root.motionStrength) * root.width : 0
+            centerY: root.isRadial ? (root.gradientSpec.center[1]
+                                      + Math.sin(2 * root.phase) * 0.03 * root.motionStrength) * root.height : 0
             centerRadius: root.isRadial ? root.gradientSpec.radius * Math.max(root.width, root.height) : 0
             focalX: centerX
             focalY: centerY

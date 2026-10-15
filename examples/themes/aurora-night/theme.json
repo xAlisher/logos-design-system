@@ -106,7 +106,11 @@
       "fit": "cover",
       "opacity": 1.0,
       "tint": "#0E0B1A",
-      "tintStrength": 0.25
+      "tintStrength": 0.25,
+      "motion": {
+        "strength": 0.6,
+        "period": 40
+      }
     }
   },
   "effects": {
