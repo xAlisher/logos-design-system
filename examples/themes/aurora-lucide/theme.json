@@ -113,5 +113,13 @@
       "modules": "assets/icons/package.svg",
       "settings": "assets/icons/settings.svg"
     }
+  },
+  "effects": {
+    "hoverGlow": {
+      "color": "#FF5E8A",
+      "blur": 18,
+      "spread": 0,
+      "opacity": 0.45
+    }
   }
 }

@@ -5,7 +5,6 @@
   "name": "Aurora",
   "author": "Alisher",
   "mode": "dark",
-
   "palette": {
     "background": "#0E0B1A",
     "backgroundSecondary": "#15102A",
@@ -40,15 +39,59 @@
     "accentForeground": "#1A0B2E",
     "brandMark": "#F2EEFF"
   },
-
   "gradients": {
-    "sidebar": { "type": "linear", "angle": 90,
-                   "stops": [[0, "#241A4E"], [1, "#110D24"]] },
-    "accent":  { "type": "linear", "angle": 135,
-                   "stops": [[0, "#FFB36B"], [1, "#FF5E8A"]] },
-    "primary": { "type": "linear", "angle": 135,
-                   "stops": [[0, "#FFB36B"], [1, "#FF5E8A"]] }
+    "sidebar": {
+      "type": "linear",
+      "angle": 90,
+      "stops": [
+        [
+          0,
+          "#241A4E"
+        ],
+        [
+          1,
+          "#110D24"
+        ]
+      ]
+    },
+    "accent": {
+      "type": "linear",
+      "angle": 135,
+      "stops": [
+        [
+          0,
+          "#FFB36B"
+        ],
+        [
+          1,
+          "#FF5E8A"
+        ]
+      ]
+    },
+    "primary": {
+      "type": "linear",
+      "angle": 135,
+      "stops": [
+        [
+          0,
+          "#FFB36B"
+        ],
+        [
+          1,
+          "#FF5E8A"
+        ]
+      ]
+    }
   },
-
-  "radius": { "scale": 1 }
+  "radius": {
+    "scale": 1
+  },
+  "effects": {
+    "hoverGlow": {
+      "color": "#FF5E8A",
+      "blur": 18,
+      "spread": 0,
+      "opacity": 0.45
+    }
+  }
 }

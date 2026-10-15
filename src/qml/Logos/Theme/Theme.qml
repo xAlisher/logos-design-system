@@ -71,6 +71,16 @@ QtObject {
         return {}
     }
 
+    // Hover glow of the active installed theme ({ color, blur, spread,
+    // opacity }), or null: built-in dark has none. Draw it with LogosGlow.
+    readonly property var hoverGlow: {
+        var installed = ThemeRegistry.themes
+        for (var i = 0; i < installed.length; ++i)
+            if (installed[i].id === currentTheme)
+                return (installed[i].effects && installed[i].effects.hoverGlow) || null
+        return null
+    }
+
     // icon pack of the active installed theme: name -> sanitised data: URL.
     readonly property var icons: {
         var installed = ThemeRegistry.themes

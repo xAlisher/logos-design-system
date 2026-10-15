@@ -59,6 +59,7 @@ qt_add_qml_module(logos_controls_qml
         LogosStage.qml
         LogosStageLane.qml
         LogosSurface.qml
+        LogosGlow.qml
         LogosToast.qml
         LogosGroupBox.qml
         LogosSpinBox.qml

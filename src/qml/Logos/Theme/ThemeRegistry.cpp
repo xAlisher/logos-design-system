@@ -425,7 +425,7 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
 
     static const QSet<QString> topLevel = {
         "$schema", "formatVersion", "id", "name", "author", "mode",
-        "palette", "spacing", "radius", "typography", "gradients", "icons", "backgrounds", "assets",
+        "palette", "spacing", "radius", "typography", "gradients", "icons", "backgrounds", "effects", "assets",
     };
     for (const QString& key : doc.keys())
         if (!topLevel.contains(key))
@@ -648,6 +648,31 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
         });
     }
 
+    // Effects: decorative, bounded values only.
+    QVariantMap effects;
+    const QJsonValue ev = doc.value("effects");
+    if (!ev.isUndefined() && !ev.isObject())
+        warnings << QStringLiteral("'effects' is not an object; ignored");
+    const QJsonObject eobj = ev.toObject();
+    for (auto it = eobj.begin(); it != eobj.end(); ++it) {
+        if (it.key() != QLatin1String("hoverGlow")) {
+            warnings << QStringLiteral("unknown effect 'effects.%1' ignored").arg(it.key());
+            continue;
+        }
+        const QJsonObject g = it.value().toObject();
+        QColor c;
+        if (!parseColor(g.value("color").toString(), &c)) {
+            warnings << QStringLiteral("'effects.hoverGlow.color' is not a colour; ignored");
+            continue;
+        }
+        effects.insert("hoverGlow", QVariantMap{
+            { "color", c },
+            { "blur", qBound(0.0, g.value("blur").toDouble(16), 48.0) },
+            { "spread", qBound(0.0, g.value("spread").toDouble(0), 16.0) },
+            { "opacity", qBound(0.0, g.value("opacity").toDouble(0.5), 1.0) },
+        });
+    }
+
     // Text that sits on a gradient slot must stay readable on every stop.
     const std::pair<const char*, const char*> onSlot[] = {
         { "workspace", "text" }, { "sidebar", "text" },
@@ -693,7 +718,8 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
         { "id", id }, { "name", name }, { "author", author }, { "mode", mode },
         { "formatVersion", version }, { "palette", palette }, { "spacing", spacing },
         { "radius", radius }, { "typography", typography }, { "gradients", gradients },
-        { "icons", icons }, { "backgrounds", backgrounds }, { "contrast", ratios }, { "lowContrast", low },
+        { "icons", icons }, { "backgrounds", backgrounds },
+        { "effects", effects }, { "contrast", ratios }, { "lowContrast", low },
     };
     return result(true);
 }

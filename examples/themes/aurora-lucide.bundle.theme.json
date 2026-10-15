@@ -114,6 +114,14 @@
       "settings": "assets/icons/settings.svg"
     }
   },
+  "effects": {
+    "hoverGlow": {
+      "color": "#FF5E8A",
+      "blur": 18,
+      "spread": 0,
+      "opacity": 0.45
+    }
+  },
   "assets": {
     "assets/icons/check.svg": "<!-- @license lucide-static v0.460.0 - ISC -->\n<svg\n  class=\"lucide lucide-check\"\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"M20 6 9 17l-5-5\" />\n</svg>\n",
     "assets/icons/chevron-down.svg": "<!-- @license lucide-static v0.460.0 - ISC -->\n<svg\n  class=\"lucide lucide-chevron-down\"\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"m6 9 6 6 6-6\" />\n</svg>\n",

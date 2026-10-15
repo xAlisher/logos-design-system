@@ -108,5 +108,13 @@
       "tint": "#0E0B1A",
       "tintStrength": 0.25
     }
+  },
+  "effects": {
+    "hoverGlow": {
+      "color": "#FF5E8A",
+      "blur": 18,
+      "spread": 0,
+      "opacity": 0.45
+    }
   }
 }
