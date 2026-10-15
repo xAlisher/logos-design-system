@@ -143,13 +143,25 @@
   "components": {
     "search": {
       "radius": 999,
-      "height": 52
+      "height": 52,
+      "background": "#15102A",
+      "border": "#2E2550",
+      "borderFocus": "#FF5E8A"
     },
     "button": {
-      "radius": 999
+      "radius": 999,
+      "secondary": {
+        "background": "#2A2148",
+        "backgroundHover": "#33285A",
+        "backgroundPressed": "#171230",
+        "border": "#3A2F66"
+      }
     },
     "field": {
-      "radius": 999
+      "radius": 999,
+      "background": "#1B1533",
+      "border": "#2E2550",
+      "borderFocus": "#FF5E8A"
     },
     "card": {
       "radius": 28,
@@ -157,6 +169,27 @@
       "shadowOpacity": 0.6,
       "shadowBlur": 28,
       "shadowOffsetY": 10
+    },
+    "combo": {
+      "background": "#221A3D",
+      "border": "#3A2F66",
+      "borderFocus": "#FF5E8A"
+    },
+    "listItem": {
+      "backgroundHover": "#2A2148",
+      "backgroundSelected": "#FF5E8A33"
+    },
+    "menuItem": {
+      "backgroundHover": "#33285A"
+    },
+    "tab": {
+      "text": "#9C92C4",
+      "textSelected": "#FF8A66"
+    },
+    "iconButton": {
+      "background": "#221A3D",
+      "backgroundHover": "#33285A",
+      "border": "#3A2F66"
     }
   },
   "assets": {
