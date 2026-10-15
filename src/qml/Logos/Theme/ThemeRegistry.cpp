@@ -3,6 +3,8 @@
 #include "ThemeInstall.h"
 
 #include <QColor>
+#include <QXmlStreamWriter>
+#include <QXmlStreamReader>
 #include <cmath>
 #include <algorithm>
 #include <QDir>
@@ -258,6 +260,36 @@ void ThemeRegistry::rescan()
             }
             seen.insert(id);
             theme.insert("source", doc.absoluteFilePath());
+
+            // Icon pack: read each file from inside this theme's folder only,
+            // sanitise it, and hand it on as a data: URL so nothing downstream
+            // (including sandboxed apps) ever reads theme files.
+            QVariantMap iconUrls;
+            const QString base = QDir(sub.absoluteFilePath()).canonicalPath();
+            const QVariantMap set = theme.value("icons").toMap().value("set").toMap();
+            for (auto it = set.begin(); it != set.end(); ++it) {
+                const QFileInfo fi(sub.absoluteFilePath() + QLatin1Char('/') + it.value().toString());
+                const QString canonical = fi.canonicalFilePath();
+                if (!fi.isFile() || fi.isSymLink() || canonical.isEmpty()
+                    || !canonical.startsWith(base + QLatin1Char('/')) || fi.size() > 32 * 1024) {
+                    qWarning("ThemeRegistry: %s: icon '%s' missing, outside the theme or over 32 KiB",
+                             qPrintable(id), qPrintable(it.key()));
+                    continue;
+                }
+                QFile icon(canonical);
+                if (!icon.open(QIODevice::ReadOnly))
+                    continue;
+                QString why;
+                const QByteArray clean = sanitizeSvg(icon.read(32 * 1024 + 1), true, &why);
+                if (clean.isEmpty()) {
+                    qWarning("ThemeRegistry: %s: icon '%s' rejected: %s",
+                             qPrintable(id), qPrintable(it.key()), qPrintable(why));
+                    continue;
+                }
+                iconUrls.insert(it.key(), QStringLiteral("data:image/svg+xml;base64,")
+                                              + QString::fromLatin1(clean.toBase64()));
+            }
+            theme.insert("iconUrls", iconUrls);
             found << theme;
         }
     }
@@ -323,7 +355,7 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
 
     static const QSet<QString> topLevel = {
         "$schema", "formatVersion", "id", "name", "author", "mode",
-        "palette", "spacing", "radius", "typography", "gradients",
+        "palette", "spacing", "radius", "typography", "gradients", "icons",
     };
     for (const QString& key : doc.keys())
         if (!topLevel.contains(key))
@@ -474,6 +506,41 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
         gradients.insert(slot, out);
     }
 
+    // Icon pack: names map to SVG files inside the theme's own folder. Only
+    // the references are checked here; the files are read and sanitised by
+    // rescan(), which knows the folder.
+    QVariantMap icons;
+    const QJsonValue iv = doc.value("icons");
+    if (!iv.isUndefined() && !iv.isObject())
+        warnings << QStringLiteral("'icons' is not an object; ignored");
+    if (iv.isObject()) {
+        const QJsonObject iobj = iv.toObject();
+        const QString style = iobj.value("style").toString(QStringLiteral("tinted"));
+        if (style != QLatin1String("tinted"))
+            warnings << QStringLiteral("'icons.style' \"%1\" not supported yet; using \"tinted\"").arg(style);
+        static const QRegularExpression nameRe(QStringLiteral("^[a-z][A-Za-z0-9]{0,31}$"));
+        static const QRegularExpression pathRe(QStringLiteral("^assets/[a-z0-9_./-]{1,120}\\.svg$"));
+        QVariantMap set;
+        const QJsonObject sobj = iobj.value("set").toObject();
+        for (auto it = sobj.begin(); it != sobj.end(); ++it) {
+            const QString path = it.value().toString();
+            if (!nameRe.match(it.key()).hasMatch()) {
+                warnings << QStringLiteral("'icons.set.%1' is not a valid icon name; ignored").arg(it.key());
+                continue;
+            }
+            if (!pathRe.match(path).hasMatch() || path.contains(QLatin1String(".."))) {
+                warnings << QStringLiteral("'icons.set.%1' must be an assets/….svg path inside the theme; ignored").arg(it.key());
+                continue;
+            }
+            if (set.size() == 128) {
+                warnings << QStringLiteral("'icons.set' has more than 128 icons; the rest are ignored");
+                break;
+            }
+            set.insert(it.key(), path);
+        }
+        icons = { { "style", QStringLiteral("tinted") }, { "set", set } };
+    }
+
     // Text that sits on a gradient slot must stay readable on every stop.
     const std::pair<const char*, const char*> onSlot[] = {
         { "workspace", "text" }, { "sidebar", "text" },
@@ -519,7 +586,7 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
         { "id", id }, { "name", name }, { "author", author }, { "mode", mode },
         { "formatVersion", version }, { "palette", palette }, { "spacing", spacing },
         { "radius", radius }, { "typography", typography }, { "gradients", gradients },
-        { "contrast", ratios }, { "lowContrast", low },
+        { "icons", icons }, { "contrast", ratios }, { "lowContrast", low },
     };
     return result(true);
 }
@@ -626,3 +693,103 @@ QVariantMap Logos::installThemeFile(const QString& path)
     return out;
 }
 
+QByteArray ThemeRegistry::sanitizeSvg(const QByteArray& svg, bool tinted, QString* error)
+{
+    auto fail = [error](const QString& why) {
+        if (error)
+            *error = why;
+        return QByteArray();
+    };
+    if (svg.size() > 32 * 1024)
+        return fail(QStringLiteral("larger than 32 KiB"));
+
+    static const QSet<QString> elements = {
+        "svg", "g", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon",
+        "defs", "linearGradient", "radialGradient", "stop", "use", "title",
+    };
+    static const QSet<QString> attributes = {
+        "id", "viewBox", "width", "height", "d", "x", "y", "x1", "y1", "x2", "y2",
+        "cx", "cy", "r", "rx", "ry", "points", "transform", "fill", "stroke",
+        "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit",
+        "fill-rule", "clip-rule", "opacity", "fill-opacity", "stroke-opacity",
+        "offset", "stop-color", "stop-opacity", "gradientUnits", "gradientTransform", "href",
+    };
+    static const QSet<QString> paints = { "fill", "stroke", "stop-color" };
+
+    QXmlStreamReader in(svg);
+    QByteArray out;
+    QXmlStreamWriter w(&out);
+    int depth = 0, skipDepth = -1, count = 0;
+    qsizetype pathChars = 0;
+    bool sawRoot = false;
+    while (!in.atEnd()) {
+        in.readNext();
+        if (in.tokenType() == QXmlStreamReader::DTD)
+            return fail(QStringLiteral("DOCTYPE / entities are not allowed"));
+        if (in.isStartElement()) {
+            ++depth;
+            const QString name = in.name().toString();
+            if (skipDepth >= 0)
+                continue;
+            if (!sawRoot) {
+                if (name != QLatin1String("svg"))
+                    return fail(QStringLiteral("root element is not <svg>"));
+                const QStringList vb = in.attributes().value("viewBox").toString()
+                                           .split(QRegularExpression(QStringLiteral("[\\s,]+")),
+                                                  Qt::SkipEmptyParts);
+                if (vb.size() != 4 || qAbs(vb.at(2).toDouble() - vb.at(3).toDouble()) > 1e-6
+                    || vb.at(2).toDouble() <= 0)
+                    return fail(QStringLiteral("needs a square viewBox"));
+            }
+            if (!elements.contains(name) || in.namespaceUri() != QLatin1String("http://www.w3.org/2000/svg")) {
+                skipDepth = depth;   // drop the element and everything inside it
+                continue;
+            }
+            if (++count > 500)
+                return fail(QStringLiteral("more than 500 elements"));
+            if (!sawRoot)
+                w.writeStartElement(QStringLiteral("svg"));
+            else
+                w.writeStartElement(name);
+            if (!sawRoot) {
+                w.writeDefaultNamespace(QStringLiteral("http://www.w3.org/2000/svg"));
+                if (tinted && !in.attributes().hasAttribute("fill"))
+                    w.writeAttribute(QStringLiteral("fill"), QStringLiteral("#FFFFFF"));
+            }
+            sawRoot = true;
+            for (const QXmlStreamAttribute& a : in.attributes()) {
+                const QString an = a.name().toString();
+                QString value = a.value().toString();
+                if (!attributes.contains(an))
+                    continue;   // incl. on* handlers, style, class, xlink:* except href
+                if (an == QLatin1String("href") && !value.startsWith(QLatin1Char('#')))
+                    continue;   // local references only
+                if (value.contains(QLatin1String("url(")) && !value.contains(QLatin1String("url(#")))
+                    continue;
+                if (tinted && paints.contains(an) && value != QLatin1String("none")
+                    && !value.startsWith(QLatin1String("url(#")))
+                    value = QStringLiteral("#FFFFFF");
+                if (an == QLatin1String("d") && (pathChars += value.size()) > 20000)
+                    return fail(QStringLiteral("path data too long"));
+                w.writeAttribute(an, value);
+            }
+        } else if (in.isEndElement()) {
+            if (skipDepth < 0)
+                w.writeEndElement();
+            else if (depth == skipDepth)
+                skipDepth = -1;
+            --depth;
+        }
+        // Text, comments and processing instructions are dropped.
+    }
+    if (in.hasError())
+        return fail(QStringLiteral("not well-formed XML: %1").arg(in.errorString()));
+    if (!sawRoot)
+        return fail(QStringLiteral("no <svg> element"));
+    return out;
+}
+
+QString ThemeRegistry::sanitizedSvg(const QString& svg, bool tinted) const
+{
+    return QString::fromUtf8(sanitizeSvg(svg.toUtf8(), tinted));
+}

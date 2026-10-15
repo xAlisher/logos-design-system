@@ -61,6 +61,21 @@ QtObject {
         return {}
     }
 
+    // icon pack of the active installed theme: name -> sanitised data: URL.
+    readonly property var icons: {
+        var installed = ThemeRegistry.themes
+        for (var i = 0; i < installed.length; ++i)
+            if (installed[i].id === currentTheme)
+                return installed[i].iconUrls || {}
+        return {}
+    }
+
+    // The theme's replacement for icon `name`, else `fallback` (the bundled one).
+    function iconOr(name, fallback) {
+        var url = icons[name]
+        return url ? url : fallback
+    }
+
     // ===== THEME INSTANCES =====
     // Currently available themes - created first
     property var darkTheme: DarkTheme { colors: theme.colors }

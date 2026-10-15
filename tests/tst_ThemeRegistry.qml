@@ -368,4 +368,61 @@ TestCase {
         compare(Object.keys(Theme.gradients).length, 0)
         verify(!surface.hasGradient, "dark sets no gradients")
     }
+
+    // ----- icon packs (v2) -----
+
+    readonly property string lucideSearch:
+        '<!-- @license lucide-static - ISC --><svg class="lucide" xmlns="http://www.w3.org/2000/svg" ' +
+        'width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+        '<circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>'
+
+    function test_sanitizer_keeps_shapes_and_whitens_paints() {
+        var out = ThemeRegistry.sanitizedSvg(lucideSearch, true)
+        verify(out.length > 0, "a plain Lucide icon is accepted")
+        verify(out.indexOf("<circle") >= 0 && out.indexOf("<path") >= 0, out)
+        verify(out.indexOf("currentColor") < 0, "currentColor becomes white")
+        verify(out.indexOf('stroke="#FFFFFF"') >= 0, out)
+        verify(out.indexOf('fill="none"') >= 0, "fill none is kept")
+        verify(out.indexOf("class=") < 0 && out.indexOf("license") < 0, "class and comments dropped")
+    }
+
+    function test_sanitizer_strips_scripts_handlers_and_external_refs() {
+        var evil = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24" onload="x()">' +
+            '<script>alert(1)</script><style>*{}</style>' +
+            '<foreignObject><div xmlns="http://www.w3.org/1999/xhtml">hi</div></foreignObject>' +
+            '<image href="file:///etc/passwd" width="24" height="24"/>' +
+            '<use xlink:href="https://evil.example/x.svg#a"/>' +
+            '<path d="M0 0h24v24H0z" fill="url(https://evil.example/p)" onclick="y()"/></svg>'
+        var out = ThemeRegistry.sanitizedSvg(evil, true)
+        verify(out.length > 0, "the safe part survives")
+        var bad = ["script", "style", "foreignObject", "<image", "onload", "onclick", "evil.example", "passwd"]
+        for (var i = 0; i < bad.length; ++i)
+            verify(out.indexOf(bad[i]) < 0, bad[i] + " must be stripped: " + out)
+        verify(out.indexOf("<path") >= 0)
+    }
+
+    function test_sanitizer_rejects_entities_non_svg_and_non_square() {
+        compare(ThemeRegistry.sanitizedSvg('<!DOCTYPE svg [<!ENTITY a "aaaa">]><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">&a;</svg>'), "")
+        compare(ThemeRegistry.sanitizedSvg('<html xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"/>'), "")
+        compare(ThemeRegistry.sanitizedSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 12"><path d="M0 0"/></svg>'), "")
+        compare(ThemeRegistry.sanitizedSvg('not xml'), "")
+    }
+
+    function test_icons_block_accepts_only_assets_paths() {
+        var r = ThemeRegistry.parse(minimalDoc({ icons: { set: {
+            search: "assets/icons/search.svg",
+            close: "../../etc/x.svg",
+            copy: "/abs/copy.svg",
+            check: "assets/icons/check.png",
+            "Bad Name": "assets/icons/x.svg"
+        } } }))
+        verify(r.ok)
+        compare(Object.keys(r.theme.icons.set).length, 1)
+        compare(r.theme.icons.set.search, "assets/icons/search.svg")
+    }
+
+    function test_icon_or_falls_back_without_a_pack() {
+        Theme.setTheme("dark")
+        compare(Theme.iconOr("search", "qrc:/fallback.svg"), "qrc:/fallback.svg")
+    }
 }
