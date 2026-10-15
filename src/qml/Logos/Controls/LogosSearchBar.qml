@@ -137,22 +137,37 @@ Control {
             textInput.activeFocusOnTab: false
         }
 
-        LogosIconButton {
+        // Round ✕ that turns accent on hover, like the sidebar's circle buttons.
+        LogosAbstractButton {
             id: clearButton
 
             Layout.alignment: Qt.AlignVCenter
             visible: d.clearVisible
-            flat: true
-            size: 20
-            iconSize: 14
-            iconSource: LogosIcons.close
-            iconColor: Theme.palette.textSecondary
+            implicitWidth: 24
+            implicitHeight: 24
             focusPolicy: Qt.NoFocus
             activeFocusOnTab: false
             Accessible.name: qsTr("Clear search")
             onClicked: {
                 field.text = ""
                 field.textInput.forceActiveFocus()
+            }
+
+            background: Rectangle {
+                radius: width / 2
+                color: clearButton.isActive ? Theme.palette.accentOrange
+                                            : Theme.palette.surface
+            }
+
+            contentItem: Item {
+                LogosIcon {
+                    anchors.centerIn: parent
+                    width: 12
+                    height: 12
+                    source: LogosIcons.close
+                    color: clearButton.isActive ? Theme.palette.backgroundBlack
+                                                : Theme.palette.textSecondary
+                }
             }
         }
 
