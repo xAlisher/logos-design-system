@@ -457,4 +457,55 @@ TestCase {
         compare(r.theme.gradients.sidebar.motion.period, 40)
         verify(r.warnings.join(" ").indexOf("motion") >= 0)
     }
+
+    // ----- component tokens & density -----
+
+    LogosTextField { id: densityField }
+    LogosComboBox { id: densityCombo; model: ["a"] }
+
+    function cleanup_density() { Theme.setDensity("") }
+
+    function test_component_defaults_equal_todays_literals() {
+        Theme.setTheme("dark")
+        Theme.setDensity("")
+        compare(Theme.density, "comfortable")
+        compare(plainBtn.implicitHeight, 44)
+        compare(densityField.implicitHeight, 40)
+        compare(densityCombo.implicitHeight, 32)
+        compare(Theme.components.button.radius, Theme.spacing.radiusXlarge)
+    }
+
+    function test_touch_density_reaches_44px_targets() {
+        Theme.setDensity("touch")
+        verify(densityCombo.implicitHeight >= 44, "combo " + densityCombo.implicitHeight)
+        compare(densityField.implicitHeight, 48)
+        compare(plainBtn.implicitHeight, 53)
+        Theme.setDensity("")
+    }
+
+    function test_compact_density_shrinks() {
+        Theme.setDensity("compact")
+        compare(densityField.implicitHeight, 34)
+        verify(plainBtn.implicitHeight < 44)
+        Theme.setDensity("")
+    }
+
+    function test_components_parse_and_clamp() {
+        var r = ThemeRegistry.parse(minimalDoc({
+            density: "touch",
+            components: {
+                button: { height: 200, radius: 0, borderWidth: 2 },
+                card: { shadowColor: "#FF000080", shadowOpacity: 0.4, shadowBlur: 12 },
+                widget: { height: 10 }
+            }
+        }))
+        verify(r.ok)
+        compare(r.theme.density, "touch")
+        compare(r.theme.components.button.height, 72, "clamped")
+        compare(r.theme.components.button.radius, 0)
+        compare(r.theme.components.card.shadowOpacity, 0.4)
+        verify(r.theme.components.widget === undefined)
+        var bad = ThemeRegistry.parse(minimalDoc({ density: "huge" }))
+        compare(bad.theme.density, "")
+    }
 }

@@ -41,10 +41,10 @@ ItemDelegate {
     readonly property alias backgroundItem: bg
     readonly property alias labelItem: label
 
-    implicitHeight: 36
+    implicitHeight: Theme.components.listItem.height
 
-    leftPadding: Theme.spacing.medium
-    rightPadding: Theme.spacing.medium
+    leftPadding: Theme.components.listItem.paddingX
+    rightPadding: Theme.components.listItem.paddingX
 
     font.family: Theme.typography.family
     font.pixelSize: Theme.typography.primaryText

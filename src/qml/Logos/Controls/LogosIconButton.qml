@@ -38,7 +38,7 @@ Control {
 
     property url   iconSource: ""
     property color iconColor: Theme.palette.textTertiary
-    property int   size: 40
+    property int   size: Theme.components.iconButton.size
     property int   iconSize: 20
     property bool  flat: false
 

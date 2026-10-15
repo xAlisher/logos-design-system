@@ -27,8 +27,8 @@ ToolButton {
 
     background: Rectangle {
         id: bg
-        implicitWidth: 36
-        implicitHeight: 36
+        implicitWidth: Theme.components.toolButton.size
+        implicitHeight: Theme.components.toolButton.size
         radius: Theme.spacing.radiusSmall
         color: root.pressed
                ? root.pressedColor

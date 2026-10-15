@@ -73,7 +73,7 @@ LogosAbstractButton {
     property alias text: label.text
     readonly property IconSpec leadingIcon: IconSpec {}
     readonly property IconSpec trailingIcon: IconSpec {}
-    property real radius: Theme.spacing.radiusXlarge
+    property real radius: Theme.components.button.radius
     property int variant: LogosButton.Variant.Secondary
     property bool compact: false
 
@@ -112,10 +112,11 @@ LogosAbstractButton {
     // chrome, where the 44px touch target is the wrong unit.
     implicitWidth: Math.max(compact ? 72 : 100,
                             implicitContentWidth + leftPadding + rightPadding)
-    implicitHeight: Math.max(compact ? 32 : 44,
+    implicitHeight: Math.max(compact ? Theme.components.button.compactHeight
+                                     : Theme.components.button.height,
                              implicitContentHeight + topPadding + bottomPadding)
-    leftPadding: compact ? Theme.spacing.medium : Theme.spacing.large
-    rightPadding: compact ? Theme.spacing.medium : Theme.spacing.large
+    leftPadding: compact ? Theme.components.button.compactPaddingX : Theme.components.button.paddingX
+    rightPadding: leftPadding
     topPadding: compact ? Theme.spacing.small : Theme.spacing.medium
     bottomPadding: compact ? Theme.spacing.small : Theme.spacing.medium
     font.family: Theme.typography.publicSans
@@ -129,7 +130,7 @@ LogosAbstractButton {
         color: d.backgroundColor(root.enabled, root.variant, root.pressed,
                                  root.hovered, root.activeFocus)
         radius: root.radius
-        border.width: 1
+        border.width: Theme.components.button.borderWidth
         border.color: {
             if (!root.enabled)
                 return Theme.palette.border

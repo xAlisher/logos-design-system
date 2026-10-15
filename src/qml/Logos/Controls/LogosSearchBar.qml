@@ -76,7 +76,7 @@ Control {
     signal submitted(string text)
 
     implicitWidth: 400
-    implicitHeight: 54
+    implicitHeight: Theme.components.search.height
 
     // Match the figma spec (8/8/8/10) using existing tokens.
     leftPadding: Theme.spacing.small + 2
@@ -91,8 +91,8 @@ Control {
 
     background: Rectangle {
         color: Theme.palette.background
-        radius: Theme.spacing.radiusLarge
-        border.width: 1
+        radius: Theme.components.search.radius
+        border.width: Theme.components.search.borderWidth
         border.color: field.textInput.activeFocus
                       ? Theme.palette.primary
                       : Theme.palette.borderSubtle

@@ -23,10 +23,10 @@ TabButton {
     readonly property alias labelItem: labelText
     readonly property alias underlineItem: underline
 
-    implicitHeight: 40
+    implicitHeight: Theme.components.tab.height
     spacing: 6
-    leftPadding: 8
-    rightPadding: 8
+    leftPadding: Theme.components.tab.paddingX
+    rightPadding: Theme.components.tab.paddingX
     topPadding: 4
     bottomPadding: 4
 

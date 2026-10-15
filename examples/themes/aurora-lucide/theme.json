@@ -139,5 +139,24 @@
       "spread": 0,
       "opacity": 0.45
     }
+  },
+  "components": {
+    "search": {
+      "radius": 999,
+      "height": 52
+    },
+    "button": {
+      "radius": 999
+    },
+    "field": {
+      "radius": 999
+    },
+    "card": {
+      "radius": 28,
+      "shadowColor": "#05030C",
+      "shadowOpacity": 0.6,
+      "shadowBlur": 28,
+      "shadowOffsetY": 10
+    }
   }
 }

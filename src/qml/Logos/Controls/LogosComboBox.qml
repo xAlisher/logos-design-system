@@ -105,7 +105,7 @@ ComboBox {
         function onDataChanged() { d.entryRevision += 1 }
     }
 
-    implicitHeight: 32
+    implicitHeight: Theme.components.combo.height
 
     focusPolicy: Qt.StrongFocus
     activeFocusOnTab: true
@@ -159,10 +159,10 @@ ComboBox {
         color: root.enabled
                ? (root.pressed ? Theme.palette.pressed : Theme.palette.backgroundButton)
                : Theme.palette.backgroundSecondary
-        radius: Theme.spacing.radiusSmall
+        radius: Theme.components.combo.radius
         border.color: root.visualFocus ? Theme.palette.overlayOrange
                      : (root.enabled ? Theme.palette.border : Theme.palette.borderSubtle)
-        border.width: 1
+        border.width: Theme.components.combo.borderWidth
     }
 
     popup: Popup {
