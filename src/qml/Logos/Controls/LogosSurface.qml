@@ -14,7 +14,7 @@ import Logos.Theme
 //         radius: Theme.spacing.radiusXlarge
 //     }
 //
-// Gradient slots: workspace, sidebar, primary, accent, header. `gradient`
+// Gradient slots: workspace, sidebar, primary, accent, header, card. `gradient`
 // sets an explicit spec instead. Background-image slots: workspace,
 // onboarding (drawn over the fill, with the theme's tint).
 Item {

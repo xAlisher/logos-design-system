@@ -440,7 +440,7 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
 
     static const QSet<QString> topLevel = {
         "$schema", "formatVersion", "id", "name", "author", "mode",
-        "palette", "spacing", "radius", "typography", "gradients", "icons", "backgrounds", "effects", "assets",
+        "palette", "spacing", "radius", "typography", "gradients", "icons", "backgrounds", "effects", "components", "density", "assets",
     };
     for (const QString& key : doc.keys())
         if (!topLevel.contains(key))
@@ -533,7 +533,7 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
     if (!gv.isUndefined() && !gv.isObject())
         warnings << QStringLiteral("'gradients' is not an object; ignored");
     static const QStringList gradientSlots = {
-        "workspace", "sidebar", "primary", "accent", "header",
+        "workspace", "sidebar", "primary", "accent", "header", "card",
     };
     const QJsonObject gobj = gv.toObject();
     for (auto it = gobj.begin(); it != gobj.end(); ++it) {
@@ -693,6 +693,69 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
         });
     }
 
+    // Component tokens: per-control sizes and styles (comfortable density,
+    // logical px). Defaults live in Theme.qml and equal today's literals.
+    QVariantMap components;
+    const QJsonValue cv = doc.value("components");
+    if (!cv.isUndefined() && !cv.isObject())
+        warnings << QStringLiteral("'components' is not an object; ignored");
+    if (cv.isObject()) {
+        const QJsonObject cobj = cv.toObject();
+        static const QHash<QString, QHash<QString, IntRange>> groups = {
+            { "button",     { { "height", { 24, 72 } }, { "compactHeight", { 20, 56 } },
+                              { "paddingX", { 0, 48 } }, { "radius", { 0, 999 } },
+                              { "borderWidth", { 0, 4 } } } },
+            { "field",      { { "height", { 24, 72 } }, { "paddingX", { 0, 48 } },
+                              { "radius", { 0, 999 } }, { "borderWidth", { 0, 4 } } } },
+            { "search",     { { "height", { 28, 80 } }, { "radius", { 0, 999 } },
+                              { "borderWidth", { 0, 4 } } } },
+            { "combo",      { { "height", { 24, 72 } }, { "radius", { 0, 999 } },
+                              { "borderWidth", { 0, 4 } } } },
+            { "listItem",   { { "height", { 24, 72 } }, { "paddingX", { 0, 48 } } } },
+            { "menuItem",   { { "height", { 24, 72 } }, { "paddingX", { 0, 48 } } } },
+            { "tab",        { { "height", { 24, 72 } }, { "paddingX", { 0, 48 } } } },
+            { "toolButton", { { "size", { 20, 72 } } } },
+            { "iconButton", { { "size", { 20, 72 } } } },
+            { "card",       { { "radius", { 0, 64 } }, { "borderWidth", { 0, 4 } },
+                              { "shadowBlur", { 0, 48 } }, { "shadowOffsetY", { -16, 16 } } } },
+        };
+        for (auto it = cobj.begin(); it != cobj.end(); ++it) {
+            if (!groups.contains(it.key())) {
+                warnings << QStringLiteral("unknown component 'components.%1' ignored").arg(it.key());
+                continue;
+            }
+            QJsonObject group = it.value().toObject();
+            QVariantMap values;
+            if (it.key() == QLatin1String("card")) {
+                // Colour and opacity are not integers; take them out first.
+                QColor sc;
+                const QJsonValue scv = group.take(QStringLiteral("shadowColor"));
+                if (!scv.isUndefined()) {
+                    if (parseColor(scv.toString(), &sc))
+                        values.insert("shadowColor", sc);
+                    else
+                        warnings << QStringLiteral("'components.card.shadowColor' is not a colour; ignored");
+                }
+                const QJsonValue sov = group.take(QStringLiteral("shadowOpacity"));
+                if (!sov.isUndefined())
+                    values.insert("shadowOpacity", qBound(0.0, sov.toDouble(0.0), 1.0));
+            }
+            QJsonObject wrapped;
+            wrapped.insert(QStringLiteral("components.") + it.key(), group);
+            const QVariantMap ints = parseIntGroup(wrapped, QStringLiteral("components.") + it.key(),
+                                                   groups.value(it.key()), warnings);
+            for (auto v = ints.begin(); v != ints.end(); ++v)
+                values.insert(v.key(), v.value());
+            components.insert(it.key(), values);
+        }
+    }
+    QString density = doc.value("density").toString();
+    if (!density.isEmpty() && density != QLatin1String("compact")
+        && density != QLatin1String("comfortable") && density != QLatin1String("touch")) {
+        warnings << QStringLiteral("'density' must be compact, comfortable or touch; ignored");
+        density.clear();
+    }
+
     // Text that sits on a gradient slot must stay readable on every stop.
     const std::pair<const char*, const char*> onSlot[] = {
         { "workspace", "text" }, { "sidebar", "text" },
@@ -739,7 +802,8 @@ QVariantMap ThemeRegistry::parseDocument(const QByteArray& data)
         { "formatVersion", version }, { "palette", palette }, { "spacing", spacing },
         { "radius", radius }, { "typography", typography }, { "gradients", gradients },
         { "icons", icons }, { "backgrounds", backgrounds },
-        { "effects", effects }, { "contrast", ratios }, { "lowContrast", low },
+        { "effects", effects }, { "components", components }, { "density", density },
+        { "contrast", ratios }, { "lowContrast", low },
     };
     return result(true);
 }

@@ -9,6 +9,8 @@ QtObject {
     property Settings settings: Settings {
         category: "LogosDesignSystem"
         property string theme: "dark"
+        // User's density choice; "" follows the theme (else comfortable).
+        property string density: ""
     }
     
     // ===== RAW COLOR PALETTE (Design Tokens) =====
@@ -79,6 +81,78 @@ QtObject {
             if (installed[i].id === currentTheme)
                 return (installed[i].effects && installed[i].effects.hoverGlow) || null
         return null
+    }
+
+    // ===== COMPONENT TOKENS & DENSITY =====
+    // Per-control sizes and styles. Defaults are today's literals, so the
+    // built-in look is unchanged; a theme's `components` block overrides them
+    // and `density` scales heights and paddings (touch keeps 44 px targets).
+    readonly property var _activeEntry: {
+        var installed = ThemeRegistry.themes
+        for (var i = 0; i < installed.length; ++i)
+            if (installed[i].id === currentTheme)
+                return installed[i]
+        return null
+    }
+    readonly property string density:
+        settings.density !== "" ? settings.density
+        : (_activeEntry && _activeEntry.density) ? _activeEntry.density : "comfortable"
+    readonly property real densityScale:
+        density === "compact" ? 0.85 : density === "touch" ? 1.2 : 1.0
+
+    function setDensity(value) { settings.density = value }
+
+    function _size(px) {
+        var v = Math.round(px * densityScale)
+        return density === "touch" ? Math.max(44, v) : v
+    }
+    function _pad(px) { return Math.round(px * densityScale) }
+
+    readonly property var components: {
+        var o = (_activeEntry && _activeEntry.components) || {}
+        function pick(group, key, fallback) {
+            return o[group] && o[group][key] !== undefined ? o[group][key] : fallback
+        }
+        var r = spacing.roundness
+        return {
+            button: {
+                height: _size(pick("button", "height", 44)),
+                compactHeight: _size(pick("button", "compactHeight", 32)),
+                paddingX: _pad(pick("button", "paddingX", spacing.large)),
+                compactPaddingX: _pad(spacing.medium),
+                radius: o.button && o.button.radius !== undefined ? o.button.radius * r : spacing.radiusXlarge,
+                borderWidth: pick("button", "borderWidth", 1)
+            },
+            field: {
+                height: _size(pick("field", "height", 40)),
+                paddingX: _pad(pick("field", "paddingX", 12)),
+                radius: o.field && o.field.radius !== undefined ? o.field.radius * r : spacing.radiusSmall,
+                borderWidth: pick("field", "borderWidth", 1)
+            },
+            search: {
+                height: _size(pick("search", "height", 54)),
+                radius: o.search && o.search.radius !== undefined ? o.search.radius * r : spacing.radiusLarge,
+                borderWidth: pick("search", "borderWidth", 1)
+            },
+            combo: {
+                height: _size(pick("combo", "height", 32)),
+                radius: o.combo && o.combo.radius !== undefined ? o.combo.radius * r : spacing.radiusSmall,
+                borderWidth: pick("combo", "borderWidth", 1)
+            },
+            listItem: { height: _size(pick("listItem", "height", 36)), paddingX: _pad(pick("listItem", "paddingX", spacing.medium)) },
+            menuItem: { height: _size(pick("menuItem", "height", 32)), paddingX: _pad(pick("menuItem", "paddingX", spacing.medium)) },
+            tab: { height: _size(pick("tab", "height", 40)), paddingX: _pad(pick("tab", "paddingX", 8)) },
+            toolButton: { size: _size(pick("toolButton", "size", 36)) },
+            iconButton: { size: _size(pick("iconButton", "size", 40)) },
+            card: {
+                radius: o.card && o.card.radius !== undefined ? o.card.radius * r : -1,   // -1: the card's own default
+                borderWidth: pick("card", "borderWidth", 0),
+                shadowColor: pick("card", "shadowColor", "transparent"),
+                shadowBlur: pick("card", "shadowBlur", 0),
+                shadowOffsetY: pick("card", "shadowOffsetY", 0),
+                shadowOpacity: pick("card", "shadowOpacity", 0)
+            }
+        }
     }
 
     // icon pack of the active installed theme: name -> sanitised data: URL.
