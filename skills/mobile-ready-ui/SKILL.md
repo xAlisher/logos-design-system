@@ -43,7 +43,8 @@ one-word labels.
 | settings | one column, max 720 — centred when it's the whole page, left-aligned inside a detail pane; grouped `LogosListRow`s: chevron = goes somewhere, value = current setting, switch = on/off; destructive group last |
 | a form | max 720 centred, page scrolls; expanded: 200 px label column; medium: labels above, short fields two per row; compact: one per row, full width, primary action full width and **last** |
 | a dashboard | content max 1200 centred; columns from the width you get and a minimum card width (stat cards 4 / 2×2 / 1, never 3+1); side-by-side cards only if both stay usable |
-| a table | expanded: full table; medium: 3 key columns + ⋯, detail in a sheet; compact: **no table**, rows become cards, tap → detail with ‹; toolbar wraps (search on its own line) |
+| a table | expanded: full table; medium: 3 key columns + ⋯, detail in a sheet; compact: **no table**, rows become cards, tap → detail with ‹; filter + primary action on their own line, search folds (§4) |
+| a catalog (icon grid + filters, no detail pane) | columns from a minimum cell width (≈ 104 compact, 140 medium, 180 expanded); a filter sidebar becomes a picker (menu) in the compact bar; tiles: tap opens, long-press for actions; list rows: a visible ⋯ |
 
 Not listed? Combine these: a page is usually a scaffold + one pattern per region.
 
@@ -52,6 +53,10 @@ Navigation state rules (every list → detail, at any depth):
 - Back closes the deepest level first. If the host shows a back row, hide the inner one: one
   way back.
 - Esc and the phone Back key do what ‹ does.
+
+The compact bar of a hosted screen: if the host draws the title and the page has no back row, the
+page gets one 44 px bar of its own: the primary filter / picker on the left, then 🔍, then ⋯
+(overflow is always last, as on Android).
 
 Width rules that bite in real screens:
 - Cap a fill pane with `Layout.maximumWidth` = the space actually left. Wide content (table
@@ -68,9 +73,17 @@ Width rules that bite in real screens:
 - Nothing hover-only: actions get a visible ⋯ button (`LogosIconButton` + `LogosIcons.more`,
   opening a `LogosMenu`); information in tooltips also appears as visible help text.
 - No double-click: one tap opens. No horizontal scrolling of a page; long text elides or wraps.
+- **Right-click menus need a touch path:** long-press, plus a visible ⋯ where rows have room.
+  Open menus anchored to the item they belong to (`popup(item, x, y)`), never at the cursor
+  (on touch the cursor position is stale).
+- **One touch flag.** Compute it once and pass it down:
+  `readonly property bool touch: Theme.windowClass(width) === "compact" || Theme.density === "touch"`.
+  DS controls reach 44 at touch density by themselves; at phone width in comfortable density
+  your own wrappers still use this flag.
 - Help and error text sit visibly under fields.
 - **Search folds in compact.** A search field never takes a row of its own on a phone: it
-  folds into a 44 px 🔍 at the **right end of the navigation bar** and unfolds across that bar
+  folds into a 44 px 🔍 at the **right end of the navigation bar** (just left of ⋯ if the bar
+  has one) and unfolds across that bar
   only when tapped (title hides; ✕ clears and folds; it stays open while it holds text; Esc
   folds). Use `LogosSearchToggle`; inside `LogosAppScaffold` set `searchEnabled` and read
   `searchText`. Medium and expanded keep a normal `LogosSearchBar`.
@@ -99,10 +112,14 @@ Each shot prints `{"overflow": [...], "smallTargets": [...]}`. Done means:
 4. you **looked** at the three PNGs (Read them) and each looks deliberate, not just squeezed;
 5. pages that push a detail or scroll are shot in those states too (`--state …`).
 
-For app screens without the lab's report: give every tappable control an `objectName`, read
-its width / height / `visible` through the inspector (`findByProperty`), ignore invisible
-matches (a screen can be instantiated twice), and **click by objectName, never by visible
-text** — text matches hit the wrong element silently (another "Notifications" in the shell).
+For app screens without the lab's report, run **`responsive-lab/app-audit.mjs <W> <H>
+<rootObjectName>`** against the running app (QML inspector, `QML_INSPECTOR_PORT`): it walks the
+screen's visible item tree in scene coordinates and prints the same `overflow` / `smallTargets`
+(the inspector's `listInteractive` geometry is parent-relative and can't show overflow). Known
+false positives: an inert `LogosTile` (`interactive: false`), and truncated text's long-press
+tooltip at touch density. Give every tappable control an `objectName`, ignore invisible matches
+(a screen can be instantiated twice), and **click by objectName, never by visible text** —
+text matches hit the wrong element silently (another "Notifications" in the shell).
 
 Attach the montage and the three report lines to the PR or reply. "Should work on mobile" is not
 done.
