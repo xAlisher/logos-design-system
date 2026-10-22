@@ -60,6 +60,9 @@ LogosAppScaffold {
 (Each pattern: what it does per class, and the lab screen that proves it.)
 
 ### 3.1 List → detail (mail, chat, any inbox) · lab: `mail`
+
+![mail at 390 / 700 / 1280](responsive/mail.png)
+
 - **medium / expanded:** two panes. List fixed at 320 (medium) / 360 (expanded) on
   `backgroundSecondary` with a 1 px `borderSubtle` edge; detail fills the rest. The detail always
   shows something (the first item by default); the open row uses `listItem.backgroundSelected`.
@@ -70,11 +73,17 @@ LogosAppScaffold {
 - Reading column stops at 720.
 
 ### 3.2 Settings rows · lab: `settings`
+
+![settings at 390 / 700 / 1280](responsive/settings.png)
+
 - One column at every size, max 720, centred. Grouped cards of `LogosListRow`: chevron for
   "goes somewhere", value text for the current setting, an accessory (switch) for on/off.
 - Destructive actions in their own group, last, in the error colour.
 
 ### 3.3 Forms · lab: `form`
+
+![form at 390 / 700 / 1280](responsive/form.png)
+
 - Form width `min(width − 2 × pageMargin, 720)`, centred; the page scrolls.
 - **expanded:** labels in a 200 px column beside fields; actions bottom-right, primary rightmost.
 - **medium:** labels above fields; short fields pair up two per row; long ones stay full width.
@@ -83,6 +92,9 @@ LogosAppScaffold {
 - Help and errors are visible text under the field, never tooltips.
 
 ### 3.4 Dashboard cards · lab: `dashboard`
+
+![dashboard at 390 / 700 / 1280](responsive/dashboard.png)
+
 - Columns from the width the content actually gets, not from the class: content =
   `min(width − 2 × pageMargin, 1200)`, centred.
 - Stat cards (min 150): 4 across if 4 fit, else 2 × 2, else 1; never 3 + 1.
@@ -91,6 +103,9 @@ LogosAppScaffold {
 - Cards never squeeze text: a minimum card width decides the column count.
 
 ### 3.5 Data table · lab: `table`
+
+![table at 390 / 700 / 1280](responsive/table.png)
+
 - **expanded:** the full `LogosTable`; page size = rows that fit (no cut row); a tap opens a detail
   panel beside the table, which then drops the columns the panel shows.
 - **medium:** keep 3 columns (name, version, status) + ⋯; the detail opens as a sheet over the
@@ -123,6 +138,8 @@ at 390/touch), no QML warnings, and the three PNGs look deliberate. Attach the m
 (`montage.py`) to the PR.
 
 ## 6. Known design-system gaps
+
+![components at 390 touch / 700 / 1280](responsive/gallery.png)
 
 Measured in the lab's `gallery` screen (390 px, touch density). 23 of 35 control instances miss
 44 px at touch density, because their sizes are literals that density never touches.
