@@ -31,10 +31,15 @@ const expr = `(function(){
   walk(root, 1e9);
   return JSON.stringify({seen:seen, overflow:over, smallTargets:small});
 }).call(this)`;
-for (const m of (r.matches || [])) {
+const matches = r.matches || [];
+if (!matches.length) console.log(JSON.stringify({ root: ROOT, error: "no object with this objectName" }));
+let audited = 0;
+for (const m of matches) {
   const e = await insp.send("evaluate", { objectId: m.id, expression: expr });
   let res = e.result; try { res = JSON.parse(res) } catch { res = {raw: e} }
   if (res && res.skip) continue;
+  audited++;
   console.log(JSON.stringify({ width: W, root: ROOT, ...res }));
 }
+if (matches.length && !audited) console.log(JSON.stringify({ root: ROOT, error: `all ${matches.length} matches are invisible: pick a root that is on screen` }));
 insp.disconnect();
