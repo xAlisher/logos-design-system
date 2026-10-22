@@ -54,9 +54,14 @@ Navigation state rules (every list → detail, at any depth):
   way back.
 - Esc and the phone Back key do what ‹ does.
 
-The compact bar of a hosted screen: if the host draws the title and the page has no back row, the
-page gets one 44 px bar of its own: the primary filter / picker on the left, then 🔍, then ⋯
-(overflow is always last, as on Android).
+The compact bar of a hosted screen: the shell's title bar belongs to the shell, so **the first
+row of the page is the page's own 44 px navigation bar**: the page title (or the primary
+filter / picker) on the left, then 🔍, then ⋯ (overflow is always last, as on Android). On a
+detail it reads "‹ Parent" instead of the title.
+
+**Filters are not navigation.** A sidebar of filters (categories, types) is not a list of
+destinations: below expanded it becomes pickers (dropdowns or a menu) in the toolbar or the
+compact bar. Keep the rail / drawer for real destinations.
 
 Width rules that bite in real screens:
 - Cap a fill pane with `Layout.maximumWidth` = the space actually left. Wide content (table
@@ -64,6 +69,8 @@ Width rules that bite in real screens:
 - Never switch layout on a width your own content can inflate: measure the container, not
   the content.
 - A table that drops columns (medium) must show them somewhere: a ⋯ / detail sheet.
+- Per-row controls that leave the row when it narrows (version pickers, secondary actions)
+  move into the detail as an **action strip, last** (thumb reach).
 
 ## 4. Touch rules (no exceptions in compact or `density: "touch"`)
 
@@ -80,7 +87,10 @@ Width rules that bite in real screens:
   `readonly property bool touch: Theme.windowClass(width) === "compact" || Theme.density === "touch"`.
   DS controls reach 44 at touch density by themselves; at phone width in comfortable density
   your own wrappers still use this flag.
-- Help and error text sit visibly under fields.
+- Help and error text sit visibly under fields. Pattern for tooltips: expose the tooltip string
+  as a property on the control (`helpText`) and print it as the card's extra line or under the
+  detail's action.
+- Menus get `margins` so a ⋯ near the window edge doesn't open half off-screen.
 - **Search folds in compact.** A search field never takes a row of its own on a phone: it
   folds into a 44 px 🔍 at the **right end of the navigation bar** (just left of ⋯ if the bar
   has one) and unfolds across that bar
@@ -111,6 +121,10 @@ Each shot prints `{"overflow": [...], "smallTargets": [...]}`. Done means:
 3. `smallTargets` empty at 390 and 700 with `--density touch`;
 4. you **looked** at the three PNGs (Read them) and each looks deliberate, not just squeezed;
 5. pages that push a detail or scroll are shot in those states too (`--state …`).
+
+A hosted screen (Package Manager, a `ui_qml` app) runs in **its own QML engine** with its own
+`Theme` instance: set density and `Theme.compactWindow` inside that engine, not only in the
+shell.
 
 For app screens without the lab's report, run **`responsive-lab/app-audit.mjs <W> <H>
 <rootObjectName>`** against the running app (QML inspector, `QML_INSPECTOR_PORT`): it walks the

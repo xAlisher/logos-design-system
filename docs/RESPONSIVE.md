@@ -123,13 +123,18 @@ LogosAppScaffold {
 - Row actions are a visible ⋯ (44 px) opening a menu. A single tap opens; nothing needs hover or
   double-click.
 
-### 3.6 Catalog (icon grid + filters) · Basecamp Applications
+### 3.6 Catalog (icon grid + filters) · Basecamp Applications, Package Manager
 - Columns from a minimum cell width: ≈ 104 compact, 140 medium, 180 expanded (5 / 3 / 3 across
   at 1280 / 700 / 390 in Applications).
 - The filter sidebar (categories) becomes a picker (a menu) on the left of the compact bar; 🔍
   then ⋯ on its right.
 - Tiles: tap opens, long-press opens the actions menu anchored to the tile. List rows: a
   visible 44 px ⋯.
+- Filters are not navigation: a categories / types sidebar becomes pickers below expanded
+  (Package Manager: two dropdowns; Applications: a menu in the compact bar).
+- Package Manager's table: medium keeps Package · Available · Action + ⋯; expanded drops the
+  description column rather than scroll sideways; compact uses cards; per-row version pickers
+  and Uninstall move into the detail's action strip.
 
 ## 4. Touch
 
