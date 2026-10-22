@@ -39,6 +39,19 @@ Item {
 
     readonly property string windowClass: Theme.windowClass(width)
     readonly property bool compact: windowClass === "compact"
+
+    // A compact window floors every DS tappable at Theme.minTouchTarget, at
+    // any density (Theme.touch). This engine's Theme only: a screen hosted in
+    // its own QML engine sets Theme.compactWindow itself (see Theme.qml).
+    Binding {
+        target: Theme
+        property: "compactWindow"
+        // Visibility is part of the value, not a `when`: a Binding switched
+        // off and on again by `when` did not re-apply its value (Qt 6.9).
+        value: root.visible && root.width > 0 && root.compact
+    }
+    // A Binding does not restore its target when it is destroyed.
+    Component.onDestruction: Theme.compactWindow = false
     readonly property alias drawer: navDrawer
 
     signal navActivated(string id)
