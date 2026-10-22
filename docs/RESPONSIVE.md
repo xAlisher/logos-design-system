@@ -54,6 +54,9 @@ LogosAppScaffold {
 - 3–7 top-level destinations. More than that: group them, or move some into Settings.
 - Labels stay short (one word fits the rail).
 - The drawer closes after a choice, and closes itself if the window grows out of compact.
+- **Hosted screens don't nest a scaffold.** A screen the shell already frames (a Basecamp tab,
+  Settings) uses list → detail instead: compact = the list is the page, a tap pushes the detail
+  under a 44 px "‹ Parent" row. Proven on Basecamp's Settings.
 
 ## 3. Patterns
 
@@ -71,6 +74,10 @@ LogosAppScaffold {
 - Rows: the whole row is the target (≥ 44, ~66 in practice); every line elides. Detail actions
   wrap (`Flow`) in two-pane mode and become an equal-width bar pinned to the bottom in compact.
 - Reading column stops at 720.
+- Narrowing to compact with a detail open keeps it open (‹ shown). Back closes the deepest level
+  first; Esc and the phone Back key do what ‹ does.
+- Cap fill panes at the space actually left (`Layout.maximumWidth`): wide content otherwise
+  pushes the pane off-screen and the layout never switches (a real bug in Settings at 700).
 
 ### 3.2 Settings rows · lab: `settings`
 
@@ -111,9 +118,23 @@ LogosAppScaffold {
 - **medium:** keep 3 columns (name, version, status) + ⋯; the detail opens as a sheet over the
   right side with the dropped fields.
 - **compact:** no table. Each row is a card (name + status badge; version · size · date; ⋯; ›);
-  a tap opens a full-page detail with ‹. Toolbar: search on its own line, filter + primary below.
+  a tap opens a full-page detail with ‹. Toolbar: filter + primary on one line; search folds into
+  the bar (§4).
 - Row actions are a visible ⋯ (44 px) opening a menu. A single tap opens; nothing needs hover or
   double-click.
+
+### 3.6 Catalog (icon grid + filters) · Basecamp Applications, Package Manager
+- Columns from a minimum cell width: ≈ 104 compact, 140 medium, 180 expanded (5 / 3 / 3 across
+  at 1280 / 700 / 390 in Applications).
+- The filter sidebar (categories) becomes a picker (a menu) on the left of the compact bar; 🔍
+  then ⋯ on its right.
+- Tiles: tap opens, long-press opens the actions menu anchored to the tile. List rows: a
+  visible 44 px ⋯.
+- Filters are not navigation: a categories / types sidebar becomes pickers below expanded
+  (Package Manager: two dropdowns; Applications: a menu in the compact bar).
+- Package Manager's table: medium keeps Package · Available · Action + ⋯; expanded drops the
+  description column rather than scroll sideways; compact uses cards; per-row version pickers
+  and Uninstall move into the detail's action strip.
 
 ## 4. Touch
 
@@ -123,7 +144,16 @@ LogosAppScaffold {
 - No hover-only affordances: actions behind hover need a visible button (⋯ menu); information in
   tooltips also needs a visible place (help text, a row subtitle, the detail view).
 - No double-click: a single tap opens; selection uses checkboxes or a long-press menu.
+- Right-click menus need a touch path (long-press, plus a visible ⋯ where there's room),
+  anchored to their item, not the cursor.
+- One flag: `touch = Theme.windowClass(width) === "compact" || Theme.density === "touch"`.
 - Primary action within thumb reach on phones: last in the form, full width.
+- **Search folds in compact:** a 🔍 (44 px) at the right end of the navigation bar, unfolding
+  across the bar on tap (title hides, ✕ clears and folds, stays open while it has text, Esc
+  folds). `LogosSearchToggle`, or `LogosAppScaffold { searchEnabled: true }` + `searchText`.
+  The list gets the row back. Medium / expanded keep the full search bar.
+
+  ![search folded and unfolded, Mail and Table at 390](responsive/search-fold.png)
 
 ## 5. Proving it (required before "done")
 
@@ -137,31 +167,31 @@ Each prints `{overflow: [...], smallTargets: [...]}`. Both empty at every width 
 at 390/touch), no QML warnings, and the three PNGs look deliberate. Attach the montage
 (`montage.py`) to the PR.
 
-## 6. Known design-system gaps
+The lab also runs inside Basecamp as a QML-only app (`responsive-lab/basecamp-app/`):
+`install.sh <basecamp user dir>`, restart, open **Responsive Lab**. It uses the same pages,
+with Basecamp's own design system and window, so you can see the rules inside a real shell
+(e.g. Basecampium's phone layout).
+
+## 6. Touch density: what the controls do
+
+At `density: "touch"` every tappable part of every control is at least 44 × 44, measured in the
+lab's `gallery` screen (all screens pass `check-all.sh` at 390 / 700 touch). Visuals stay their
+size; the hit area grows. At comfortable and compact density, rendering is pixel-identical to
+before (diffed), except the Paginator, which now collapses to "‹ 4 / 10 ›" when it doesn't fit
+instead of being clipped.
+
+- Checkbox, radio, switch, slider: the whole row is ≥ 44 high; the box / dot / track / handle
+  keep their size.
+- Spin box: field height (48) with − / + 44 wide.
+- Copy, info, tile, link, search-bar ✕, notice / toast ✕, stage lane: 44 hit areas.
+- Combo popup rows, table header and checkbox cells: 44.
+- Table on touch: pressed / selected row backgrounds; the checkbox cell toggles the row.
+- Toast: tap pins it (auto-dismiss used to pause on hover only).
+- Tooltip: long-press opens on touch, tap outside closes (`openOnLongPress`).
 
 ![components at 390 touch / 700 / 1280](responsive/gallery.png)
 
-Measured in the lab's `gallery` screen (390 px, touch density). 23 of 35 control instances miss
-44 px at touch density, because their sizes are literals that density never touches.
-
-| Control | Touch size today | Fix |
-|---|---|---|
-| LogosCheckbox / LogosRadioButton / LogosSwitch | row 30–36 high | row height ≥ 44 on touch; indicator may stay small |
-| LogosSpinBox | 32 high, − / + 28 wide | height from `field.height`; − / + ≥ 44 × 44 |
-| LogosSlider | 30 high, handle 18 | control ≥ 44 high on touch; larger handle hit area |
-| LogosCopyButton, LogosCopyableText | 24 × 24 | size from `iconButton.size`, or a 44 hit area |
-| LogosInfoButton | 16 × 16 | keep the 16 px glyph, 44 hit area |
-| LogosTile | 40 × 40 | size from a token |
-| LogosLink | 17 high | vertical hit padding to 44 on touch |
-| LogosSearchBar clear ✕, LogosNotice / LogosToast close | 20–24 | 44 hit area, visual unchanged |
-| LogosComboBox popup rows | 39 | delegate height from `listItem.height` |
-| LogosPaginator | 36 (literal); overflows at 390 | tokenise; collapse to "‹ 4/10 ›" in compact |
-| LogosTable header / row checkbox | 36 / 32 | `headerHeight` from `_size(36)`; 44 checkbox cell; row press/selected states |
-| LogosStageLane (interactive) | 30 | 44 on touch |
-| LogosToolTip | opens on hover only | long-press opens; tap outside closes |
-| LogosToast | auto-dismiss pauses on hover only | tap to pin |
-
-Also missing for apps (found building the lab screens): a selected state and a third line on
+Still missing for apps (found building the lab screens): a selected state and a third line on
 `LogosListRow` (inbox rows), a list/detail container, a content card that matches
 `LogosStatCard` (`LogosFrame` doesn't), an `error` / help line on `LogosTextField`, a row-actions
 column on `LogosTable`, and `archive` / `reply` icons.

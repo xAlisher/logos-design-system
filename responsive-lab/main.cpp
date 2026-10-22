@@ -112,7 +112,11 @@ void walk(QQuickItem* item, const QRectF& clip, qreal winW, int minTarget,
     // Overflow: the item runs past the right edge of what can show it (its
     // nearest clipping ancestor, or the window), so part of it is cut off.
     // Reported once, at the outermost item that overflows.
-    const bool overflows = scene.width() > 0 && scene.height() > 0
+    // A bare Item with no children draws nothing (e.g. a ListView's empty
+    // default highlight), so it can't visibly overflow.
+    const bool drawsNothing = qstrcmp(item->metaObject()->className(), "QQuickItem") == 0
+                              && item->childItems().isEmpty();
+    const bool overflows = !drawsNothing && scene.width() > 0 && scene.height() > 0
                            && scene.right() > clip.right() + 1.0 && scene.left() < clip.right();
     if (overflows && !*overflowReported) {
         QStringList path;

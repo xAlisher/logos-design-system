@@ -19,7 +19,10 @@ import Logos.Theme
 //     fallbackColor  plate colour when there is no artwork. Defaults to the
 //                    theme grey. Callers wanting a per-item colour compute it
 //                    and pass it in
-//     tileSize       edge length in px
+//     tileSize       edge length in px (default 40; Theme._size(40) under
+//                    Theme.touch: 48 at touch density, 44 in a compact
+//                    window at comfortable). On touch a smaller tileSize keeps its look but
+//                    the control (hit area) is padded to Theme.minTouchTarget
 //     radius         corner radius; artwork is masked to it
 //     highlighted    force hovered chrome (selected/current tile)
 //     dimOpacity     externally-driven dim (e.g. not-yet-loaded plugins)
@@ -62,7 +65,7 @@ LogosAbstractButton {
     property bool highlighted: false
     // Artwork is inset and uncropped rather than bleeding to the tile edge.
     property bool insetArtwork: true
-    property int tileSize: 40
+    property int tileSize: Theme.touch ? Theme._size(40) : 40
     property real radius: Theme.spacing.radiusMedium
     property real dimOpacity: 1.0
 
@@ -104,11 +107,18 @@ LogosAbstractButton {
         readonly property real artworkBrightness:
             d.isPressed ? -0.06 : (d.isHovered ? 0.08 : 0)
 
+        // Transparent margin that brings a small tile's hit area to 44 on touch.
+        readonly property real hitPad: Theme.touch
+                                       ? Math.max(0, (Theme.minTouchTarget - root.tileSize) / 2) : 0
     }
 
-    implicitWidth: tileSize
-    implicitHeight: tileSize
-    padding: 0
+    implicitWidth: tileSize + 2 * d.hitPad
+    implicitHeight: tileSize + 2 * d.hitPad
+    padding: d.hitPad
+    topInset: d.hitPad
+    bottomInset: d.hitPad
+    leftInset: d.hitPad
+    rightInset: d.hitPad
     opacity: dimOpacity * (enabled ? 1.0 : 0.4)
     Behavior on opacity { NumberAnimation { duration: 150 } }
 
