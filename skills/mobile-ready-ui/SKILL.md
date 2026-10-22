@@ -122,6 +122,9 @@ Each shot prints `{"overflow": [...], "smallTargets": [...]}`. Done means:
 4. you **looked** at the three PNGs (Read them) and each looks deliberate, not just squeezed;
 5. pages that push a detail or scroll are shot in those states too (`--state …`).
 
+To run and drive a real Basecamp headlessly (isolated runs, resize, click by objectName,
+screenshots, touch, audit), use the **`headless-basecamp-ui`** skill.
+
 A hosted screen (Package Manager, a `ui_qml` app) runs in **its own QML engine** with its own
 `Theme` instance: set density and `Theme.compactWindow` inside that engine, not only in the
 shell.
