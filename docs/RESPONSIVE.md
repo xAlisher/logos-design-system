@@ -131,6 +131,12 @@ LogosAppScaffold {
   tooltips also needs a visible place (help text, a row subtitle, the detail view).
 - No double-click: a single tap opens; selection uses checkboxes or a long-press menu.
 - Primary action within thumb reach on phones: last in the form, full width.
+- **Search folds in compact:** a 🔍 (44 px) at the right end of the navigation bar, unfolding
+  across the bar on tap (title hides, ✕ clears and folds, stays open while it has text, Esc
+  folds). `LogosSearchToggle`, or `LogosAppScaffold { searchEnabled: true }` + `searchText`.
+  The list gets the row back. Medium / expanded keep the full search bar.
+
+  ![search folded and unfolded, Mail and Table at 390](responsive/search-fold.png)
 
 ## 5. Proving it (required before "done")
 

@@ -69,6 +69,11 @@ Width rules that bite in real screens:
   opening a `LogosMenu`); information in tooltips also appears as visible help text.
 - No double-click: one tap opens. No horizontal scrolling of a page; long text elides or wraps.
 - Help and error text sit visibly under fields.
+- **Search folds in compact.** A search field never takes a row of its own on a phone: it
+  folds into a 44 px 🔍 at the **right end of the navigation bar** and unfolds across that bar
+  only when tapped (title hides; ✕ clears and folds; it stays open while it holds text; Esc
+  folds). Use `LogosSearchToggle`; inside `LogosAppScaffold` set `searchEnabled` and read
+  `searchText`. Medium and expanded keep a normal `LogosSearchBar`.
 
 Design-system controls reach 44 on their own at `density: "touch"` (since the touch-targets
 change); don't add wrappers for them. Your own tappable items (a custom row, an icon in a
