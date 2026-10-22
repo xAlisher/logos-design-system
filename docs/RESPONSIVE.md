@@ -167,6 +167,11 @@ Each prints `{overflow: [...], smallTargets: [...]}`. Both empty at every width 
 at 390/touch), no QML warnings, and the three PNGs look deliberate. Attach the montage
 (`montage.py`) to the PR.
 
+The lab also runs inside Basecamp as a QML-only app (`responsive-lab/basecamp-app/`):
+`install.sh <basecamp user dir>`, restart, open **Responsive Lab**. It uses the same pages,
+with Basecamp's own design system and window, so you can see the rules inside a real shell
+(e.g. Basecampium's phone layout).
+
 ## 6. Touch density: what the controls do
 
 At `density: "touch"` every tappable part of every control is at least 44 × 44, measured in the

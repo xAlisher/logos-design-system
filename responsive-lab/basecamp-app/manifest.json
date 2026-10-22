@@ -1,0 +1,14 @@
+{
+  "author": "Alisher (xAlisher)",
+  "category": "development",
+  "dependencies": [],
+  "description": "Design-system demo: mail, settings, form, dashboard, table and component screens that adapt from phone to desktop.",
+  "display_name": "Responsive Lab",
+  "icon": "icon.png",
+  "main": {},
+  "manifestVersion": "0.6.0",
+  "name": "responsive_lab",
+  "type": "ui_qml",
+  "version": "0.1.0",
+  "view": "qml/Main.qml"
+}
