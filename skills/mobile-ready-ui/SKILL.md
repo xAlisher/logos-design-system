@@ -53,10 +53,9 @@ Not listed? Combine these: a page is usually a scaffold + one pattern per region
 - No double-click: one tap opens. No horizontal scrolling of a page; long text elides or wraps.
 - Help and error text sit visibly under fields.
 
-Known design-system controls that are still under 44 at touch density (wrap them until the DS
-fixes land, see RESPONSIVE.md §6): checkbox, radio, switch rows; spin box − / +; slider; copy
-button; info button; tile; link; search-bar clear; notice / toast close; combo popup rows;
-paginator; table header and checkboxes. Tooltips never open on touch.
+Design-system controls reach 44 on their own at `density: "touch"` (since the touch-targets
+change); don't add wrappers for them. Your own tappable items (a custom row, an icon in a
+`MouseArea`) still need the 44 hit area themselves.
 
 ## 5. Prove it (required before you say done)
 

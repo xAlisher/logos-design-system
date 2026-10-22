@@ -137,31 +137,26 @@ Each prints `{overflow: [...], smallTargets: [...]}`. Both empty at every width 
 at 390/touch), no QML warnings, and the three PNGs look deliberate. Attach the montage
 (`montage.py`) to the PR.
 
-## 6. Known design-system gaps
+## 6. Touch density: what the controls do
+
+At `density: "touch"` every tappable part of every control is at least 44 × 44, measured in the
+lab's `gallery` screen (all screens pass `check-all.sh` at 390 / 700 touch). Visuals stay their
+size; the hit area grows. At comfortable and compact density, rendering is pixel-identical to
+before (diffed), except the Paginator, which now collapses to "‹ 4 / 10 ›" when it doesn't fit
+instead of being clipped.
+
+- Checkbox, radio, switch, slider: the whole row is ≥ 44 high; the box / dot / track / handle
+  keep their size.
+- Spin box: field height (48) with − / + 44 wide.
+- Copy, info, tile, link, search-bar ✕, notice / toast ✕, stage lane: 44 hit areas.
+- Combo popup rows, table header and checkbox cells: 44.
+- Table on touch: pressed / selected row backgrounds; the checkbox cell toggles the row.
+- Toast: tap pins it (auto-dismiss used to pause on hover only).
+- Tooltip: long-press opens on touch, tap outside closes (`openOnLongPress`).
 
 ![components at 390 touch / 700 / 1280](responsive/gallery.png)
 
-Measured in the lab's `gallery` screen (390 px, touch density). 23 of 35 control instances miss
-44 px at touch density, because their sizes are literals that density never touches.
-
-| Control | Touch size today | Fix |
-|---|---|---|
-| LogosCheckbox / LogosRadioButton / LogosSwitch | row 30–36 high | row height ≥ 44 on touch; indicator may stay small |
-| LogosSpinBox | 32 high, − / + 28 wide | height from `field.height`; − / + ≥ 44 × 44 |
-| LogosSlider | 30 high, handle 18 | control ≥ 44 high on touch; larger handle hit area |
-| LogosCopyButton, LogosCopyableText | 24 × 24 | size from `iconButton.size`, or a 44 hit area |
-| LogosInfoButton | 16 × 16 | keep the 16 px glyph, 44 hit area |
-| LogosTile | 40 × 40 | size from a token |
-| LogosLink | 17 high | vertical hit padding to 44 on touch |
-| LogosSearchBar clear ✕, LogosNotice / LogosToast close | 20–24 | 44 hit area, visual unchanged |
-| LogosComboBox popup rows | 39 | delegate height from `listItem.height` |
-| LogosPaginator | 36 (literal); overflows at 390 | tokenise; collapse to "‹ 4/10 ›" in compact |
-| LogosTable header / row checkbox | 36 / 32 | `headerHeight` from `_size(36)`; 44 checkbox cell; row press/selected states |
-| LogosStageLane (interactive) | 30 | 44 on touch |
-| LogosToolTip | opens on hover only | long-press opens; tap outside closes |
-| LogosToast | auto-dismiss pauses on hover only | tap to pin |
-
-Also missing for apps (found building the lab screens): a selected state and a third line on
+Still missing for apps (found building the lab screens): a selected state and a third line on
 `LogosListRow` (inbox rows), a list/detail container, a content card that matches
 `LogosStatCard` (`LogosFrame` doesn't), an `error` / help line on `LogosTextField`, a row-actions
 column on `LogosTable`, and `archive` / `reply` icons.
