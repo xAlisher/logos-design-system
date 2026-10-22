@@ -54,6 +54,9 @@ LogosAppScaffold {
 - 3–7 top-level destinations. More than that: group them, or move some into Settings.
 - Labels stay short (one word fits the rail).
 - The drawer closes after a choice, and closes itself if the window grows out of compact.
+- **Hosted screens don't nest a scaffold.** A screen the shell already frames (a Basecamp tab,
+  Settings) uses list → detail instead: compact = the list is the page, a tap pushes the detail
+  under a 44 px "‹ Parent" row. Proven on Basecamp's Settings.
 
 ## 3. Patterns
 
@@ -71,6 +74,10 @@ LogosAppScaffold {
 - Rows: the whole row is the target (≥ 44, ~66 in practice); every line elides. Detail actions
   wrap (`Flow`) in two-pane mode and become an equal-width bar pinned to the bottom in compact.
 - Reading column stops at 720.
+- Narrowing to compact with a detail open keeps it open (‹ shown). Back closes the deepest level
+  first; Esc and the phone Back key do what ‹ does.
+- Cap fill panes at the space actually left (`Layout.maximumWidth`): wide content otherwise
+  pushes the pane off-screen and the layout never switches (a real bug in Settings at 700).
 
 ### 3.2 Settings rows · lab: `settings`
 
