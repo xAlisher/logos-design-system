@@ -432,7 +432,7 @@ Item {
                         model: page.compact ? null : page.expanded ? pageModel : listModel
                         rowHeight: Math.max(56, Theme.minTouchTarget + Theme.spacing.small)
                         // DS header is 36 px; on touch it is a row of sort targets.
-                        headerHeight: Theme.density === "touch" ? Theme.minTouchTarget : 36
+                        headerHeight: Theme.touch ? Theme.minTouchTarget : 36
                         sortRole: d.sortRole
                         sortOrder: d.sortOrder
                         emptyText: "No packages match"
