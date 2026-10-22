@@ -14,7 +14,8 @@ for page in mail settings form dashboard table gallery; do
 import json, sys
 page, w, dens, raw, errf = sys.argv[1:6]
 d = json.loads(raw)
-warn = [l for l in open(errf) if l.strip() and "qml" in l.lower()]
+# QML warnings (file:line: …), not the pages' own console.log/warn lines ("qml: …").
+warn = [l for l in open(errf) if l.strip() and "qml" in l.lower() and not l.startswith("qml: ")]
 o, s = d["overflow"], d["smallTargets"]
 ok = not o and not warn and (not s or dens != "touch")
 print(f"{'PASS' if ok else 'FAIL'} {page:10} {w:>5} {dens:12} overflow={len(o)} small={len(s)} warnings={len(warn)}")
